@@ -10,6 +10,17 @@ Voice-first phenomenological data capture with client-side encryption. Zero-know
 4. Your link goes live at `https://yourusername.github.io/experience-capture/`
 5. Share the link. That's it.
 
+## How data gets to you
+
+There's no server, no form endpoint, no third party. The handoff is peer-to-peer:
+
+1. Explorer completes their capture and downloads encrypted `.sensoria.enc` files
+2. They send the files to you on **Signal** (end-to-end encrypted)
+3. They share their passphrase in a **separate Signal message** (or in person)
+4. You decrypt on your end using the decryption function below
+
+Two layers of encryption: the passphrase locks the file, Signal encrypts the channel. No middleware, no metadata leakage, no third-party servers.
+
 ## Security model
 
 | Layer | Implementation |
