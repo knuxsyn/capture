@@ -249,6 +249,14 @@ function App(){
         <div className={"consent-box "+(consent?"active":"")} onClick={()=>setConsent(!consent)}><div className="consent-check">{consent?"\u2713":""}</div><div className="consent-text">I share this with Sensoria Research for consciousness mapping. My passphrase is the only key. I can destroy this vault whenever I choose.</div></div>
         <button className="btn-primary" onClick={doExport} disabled={!consent||exporting}>{exporting?"Encrypting...":exported?"\u2713 Saved \u2014 export again":"Encrypt & save to my device"}</button>
         {exported&&<p style={{color:"var(--phthalo-light)",fontSize:12,textAlign:"center",marginTop:14,lineHeight:1.5}}>Saved. The encryption means you can share these files however is easiest &mdash; email, message, airdrop. They\'re unreadable without your passphrase.</p>}</div>
+      <div className="card">
+        <div className="card-title">Send it over</div>
+        <p className="card-desc">Your encrypted files are on your device. Here\'s how to get them to us.</p>
+        <div className="shield-row"><span className="shield-icon">{"1"}</span><span className="shield-text">Open <strong>Signal</strong> and find the Sensoria Research contact (or search for the number your contact gave you)</span></div>
+        <div className="shield-row"><span className="shield-icon">{"2"}</span><span className="shield-text">Send your <strong>.sensoria.enc</strong> file{keepAudio&&hasRec?" and voice file":""} as an attachment</span></div>
+        <div className="shield-row"><span className="shield-icon">{"3"}</span><span className="shield-text">In a <strong>separate message</strong>, share your passphrase (or share it in person next time you see us)</span></div>
+        <p style={{fontSize:11,color:"var(--text-dim)",textAlign:"center",marginTop:16,lineHeight:1.6}}>Two layers of encryption: your passphrase locks the file, Signal encrypts the channel. No servers, no databases, no middlemen.</p>
+      </div>
       <div className="card" style={{background:"linear-gradient(135deg, rgba(0,121,107,0.08) 0%, rgba(255,210,141,0.06) 100%)",border:"1px solid rgba(0,121,107,0.25)"}}>
         <div style={{textAlign:"center"}}>
           <div style={{fontSize:18,marginBottom:8}}>{"◉"}</div>
