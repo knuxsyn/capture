@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Sensoria · Experience Capture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--phthalo:#00796B;--phthalo-deep:#004D40;--phthalo-light:#26A69A;--phthalo-glow:rgba(0,121,107,0.35);--phthalo-dim:rgba(0,121,107,0.12);--gold:#FFD28D;--bg:#080d12;--bg-card:#0f151c;--bg-elevated:#1a232e;--text:#e4e9ee;--text-secondary:#8899aa;--text-dim:#4d5e6f;--border:rgba(255,255,255,0.06);--border-active:rgba(0,121,107,0.4);--danger:#ef6b73;--accent-warm:#ffb86c;--accent-cool:#7dcfff}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,sans-serif;min-height:100vh;min-height:100dvh;overflow-x:hidden}
+.app{max-width:460px;margin:0 auto;padding:24px 18px 120px;position:relative}
+.app::before{content:'';position:fixed;top:-120px;left:50%;transform:translateX(-50%);width:500px;height:300px;background:radial-gradient(ellipse,rgba(0,121,107,0.08) 0%,transparent 70%);pointer-events:none;z-index:0}
+.header{text-align:center;margin-bottom:28px;position:relative;z-index:1}
+.header-lab{font-size:10px;letter-spacing:0.22em;color:var(--phthalo-light);text-transform:uppercase;font-weight:600;margin-bottom:6px}
+.header-title{font-size:24px;font-weight:700;letter-spacing:-0.02em;line-height:1.2;margin-bottom:6px}
+.header-sub{font-size:13px;color:var(--text-secondary);line-height:1.5;max-width:320px;margin:0 auto}
+.progress{display:flex;gap:5px;margin-bottom:28px;padding:0 4px}
+.progress-step{flex:1;text-align:center}
+.progress-bar{height:2.5px;border-radius:2px;margin-bottom:7px;background:var(--border);transition:background 0.4s}
+.progress-bar.active{background:var(--phthalo-light)}.progress-bar.done{background:var(--phthalo)}
+.progress-label{font-size:9.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-dim);font-weight:500;transition:color 0.3s}
+.progress-label.active{color:var(--phthalo-light);font-weight:600}.progress-label.done{color:var(--text-secondary)}
+.card{background:var(--bg-card);border-radius:16px;padding:24px;border:1px solid var(--border);margin-bottom:16px;position:relative;z-index:1}
+.card-title{font-size:16px;font-weight:600;margin-bottom:4px;letter-spacing:-0.01em}
+.card-desc{font-size:13px;color:var(--text-secondary);line-height:1.55;margin-bottom:18px}
+.card-desc em{color:var(--text);font-style:normal;font-weight:500}
+.vault-card{border-color:var(--border-active)}
+.vault-icon{font-size:28px;margin-bottom:12px;display:block;text-align:center}
+.vault-badge{display:inline-flex;align-items:center;gap:6px;background:var(--phthalo-dim);border:1px solid var(--border-active);border-radius:20px;padding:6px 14px;font-size:12px;color:var(--phthalo-light);font-weight:600}
+.vault-badge-dot{width:6px;height:6px;border-radius:50%;background:var(--phthalo-light)}
+.shield-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.shield-icon{font-size:14px;flex-shrink:0;margin-top:1px}
+.shield-text{font-size:12px;color:var(--text-secondary);line-height:1.5}
+.shield-text strong{color:var(--text)}
+.orb-container{display:flex;justify-content:center;margin:12px 0 16px;cursor:pointer;user-select:none;-webkit-user-select:none}
+.orb-ring{width:140px;height:140px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;transition:transform 0.12s ease-out}
+.orb-ring::before{content:'';position:absolute;inset:-8px;border-radius:50%;border:1.5px solid var(--phthalo-dim);transition:border-color 0.3s,transform 0.15s}
+.orb-ring.recording::before{border-color:var(--phthalo-glow);animation:pulse-ring 2s ease-in-out infinite}
+@keyframes pulse-ring{0%,100%{transform:scale(1);opacity:0.5}50%{transform:scale(1.08);opacity:1}}
+.orb-core{width:52px;height:52px;border-radius:50%;background:var(--phthalo);transition:all 0.3s;box-shadow:0 0 24px var(--phthalo-glow)}
+.orb-core.recording{border-radius:10px;width:40px;height:40px;background:var(--danger);box-shadow:0 0 24px rgba(239,107,115,0.35)}
+.recording-status{text-align:center;margin-bottom:12px;height:20px;display:flex;align-items:center;justify-content:center;gap:10px}
+.rec-dot{width:7px;height:7px;border-radius:50%;background:var(--danger);animation:blink 1.2s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+.rec-label{font-size:12px;font-weight:600;color:var(--danger)}
+.rec-time{font-size:12px;color:var(--text-secondary);font-family:'JetBrains Mono',monospace}
+.idle-hint{font-size:12px;color:var(--text-dim);text-align:center}
+.rec-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(255,255,255,0.02);border-radius:10px;margin-bottom:6px}
+.rec-item-left{display:flex;align-items:center;gap:10px}
+.rec-item-dot{width:7px;height:7px;border-radius:50%;background:var(--phthalo-light)}
+.rec-item-label{font-size:13px;color:var(--text-secondary)}
+.rec-item-dur{font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
+.rec-list-divider{border-top:1px solid var(--border);margin-top:16px;padding-top:14px}
+.rec-item-actions{display:flex;gap:6px;align-items:center}
+.rec-item-btn{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text-dim);font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s}
+.rec-item-btn.danger:hover{border-color:var(--danger);color:var(--danger)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-block;padding:9px 16px;border-radius:22px;background:rgba(255,255,255,0.03);border:1px solid var(--border);color:var(--text-secondary);font-size:13px;cursor:pointer;transition:all 0.2s;font-weight:400;font-family:'DM Sans',sans-serif;line-height:1}
+.chip:hover{background:rgba(255,255,255,0.05)}
+.chip.active{background:var(--phthalo-dim);border-color:var(--phthalo-light);color:var(--phthalo-light);font-weight:600}
+.chip.small{padding:7px 12px;font-size:12px;border-radius:18px}
+.field{margin-bottom:16px}
+.field-label{display:block;font-size:12px;color:var(--text-secondary);margin-bottom:6px;letter-spacing:0.02em}
+.field-input,.field-textarea{width:100%;background:rgba(255,255,255,0.035);border:1px solid var(--border);border-radius:11px;padding:13px 15px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color 0.2s}
+.field-input:focus,.field-textarea:focus{border-color:var(--border-active)}
+.field-textarea{resize:vertical;min-height:80px;line-height:1.5}
+.field-input::placeholder,.field-textarea::placeholder{color:var(--text-dim)}
+select.field-input{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%234d5e6f' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 15px center}
+select.field-input option{background:var(--bg-card);color:var(--text)}
+.field-hint{font-size:11px;color:var(--text-dim);margin-top:5px;line-height:1.4}
+.strength-bar{height:3px;border-radius:2px;background:var(--border);margin-top:8px;overflow:hidden}
+.strength-fill{height:100%;border-radius:2px;transition:width 0.3s,background 0.3s}
+.slider-group{margin-bottom:26px}
+.slider-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.slider-label{font-size:13px;color:var(--text-secondary);letter-spacing:0.02em}
+.slider-value{font-size:13px;font-weight:600;font-family:'JetBrains Mono',monospace}
+.slider-anchors{display:flex;justify-content:space-between;margin-top:6px}
+.slider-anchor{font-size:10.5px;color:var(--text-dim)}
+input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:5px;border-radius:3px;background:var(--bg-elevated);outline:none;cursor:pointer}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:var(--phthalo-light);box-shadow:0 0 10px var(--phthalo-glow);cursor:pointer}
+.time-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.time-option{padding:10px 12px;border-radius:12px;text-align:center;background:rgba(255,255,255,0.025);border:1px solid var(--border);cursor:pointer;transition:all 0.2s;min-width:68px}
+.time-option.active{background:var(--phthalo-dim);border-color:var(--phthalo-light)}
+.time-option-icon{font-size:17px;margin-bottom:3px}
+.time-option-label{font-size:10.5px;color:var(--text-dim);transition:color 0.2s}
+.time-option.active .time-option-label{color:var(--phthalo-light)}
+.body-map-container{display:flex;flex-direction:column;align-items:center;gap:16px}
+.body-svg{width:100%;max-width:180px}.body-svg ellipse{cursor:pointer;transition:all 0.2s}
+.summary-card{background:rgba(255,255,255,0.025);border-radius:12px;padding:16px;margin-bottom:16px}
+.summary-card-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}
+.summary-row{display:flex;justify-content:space-between;padding:4px 0}
+.summary-key{font-size:12px;color:var(--text-dim)}
+.summary-val{font-size:12px;color:var(--text-secondary);font-family:'JetBrains Mono',monospace}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;gap:16px}
+.toggle-label{font-size:13px;color:var(--text-secondary)}
+.toggle-track{width:42px;height:24px;border-radius:12px;background:var(--bg-elevated);border:1px solid var(--border);cursor:pointer;position:relative;transition:all 0.2s;flex-shrink:0}
+.toggle-track.on{background:var(--phthalo-dim);border-color:var(--phthalo-light)}
+.toggle-thumb{width:18px;height:18px;border-radius:50%;background:var(--text-dim);position:absolute;top:2px;left:2px;transition:all 0.2s}
+.toggle-track.on .toggle-thumb{left:20px;background:var(--phthalo-light)}
+.btn-primary{background:var(--phthalo);color:var(--text);border:none;border-radius:11px;padding:15px 28px;font-size:15px;font-weight:600;cursor:pointer;letter-spacing:0.01em;font-family:'DM Sans',sans-serif;transition:all 0.2s;box-shadow:0 4px 24px var(--phthalo-glow);width:100%}
+.btn-primary:hover{background:var(--phthalo-light)}.btn-primary:disabled{opacity:0.35;cursor:not-allowed}
+.btn-secondary{background:transparent;color:var(--text-secondary);border:1px solid rgba(255,255,255,0.1);border-radius:11px;padding:13px 24px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s}
+.btn-secondary:hover{border-color:rgba(255,255,255,0.2)}
+.btn-ghost{background:none;border:none;color:var(--text-dim);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;padding:8px 12px;transition:color 0.2s}
+.btn-danger-ghost{background:none;border:1px solid rgba(239,107,115,0.3);color:var(--danger);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;padding:10px 20px;border-radius:10px;transition:all 0.2s}
+.btn-danger-ghost:hover{background:rgba(239,107,115,0.08)}
+.nav-footer{position:fixed;bottom:0;left:0;right:0;padding:0 18px 22px;display:flex;justify-content:center;gap:12px;max-width:460px;margin:0 auto;z-index:10}
+.nav-footer::before{content:'';position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(transparent,var(--bg) 40%);pointer-events:none;z-index:-1}
+.nav-continue{flex:1;max-width:260px}
+.footer-note{text-align:center;padding:20px 16px;font-size:11px;color:var(--text-dim);line-height:1.6}
+.step-enter{animation:fadeUp 0.35s ease-out}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.enc-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--phthalo-light);letter-spacing:0.04em;font-weight:600;text-transform:uppercase}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<script type="text/babel">
+const{useState,useRef,useCallback}=React;
+async function deriveKey(p,s){const e=new TextEncoder();const k=await crypto.subtle.importKey("raw",e.encode(p),"PBKDF2",false,["deriveKey"]);return crypto.subtle.deriveKey({name:"PBKDF2",salt:s,iterations:310000,hash:"SHA-256"},k,{name:"AES-GCM",length:256},false,["encrypt"])}
+async function encryptPayload(d,p){const s=crypto.getRandomValues(new Uint8Array(16));const iv=crypto.getRandomValues(new Uint8Array(12));const k=await deriveKey(p,s);const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},k,new TextEncoder().encode(JSON.stringify(d)));const b=new Uint8Array(s.length+iv.length+ct.byteLength);b.set(s,0);b.set(iv,s.length);b.set(new Uint8Array(ct),s.length+iv.length);return btoa(String.fromCharCode(...b))}
+async function encryptBlob(bl,p){const s=crypto.getRandomValues(new Uint8Array(16));const iv=crypto.getRandomValues(new Uint8Array(12));const k=await deriveKey(p,s);const buf=await bl.arrayBuffer();const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},k,buf);const b=new Uint8Array(s.length+iv.length+ct.byteLength);b.set(s,0);b.set(iv,s.length);b.set(new Uint8Array(ct),s.length+iv.length);return new Blob([b],{type:"application/octet-stream"})}
+
+const BR=[{id:"head",label:"Head",cx:50,cy:12,rx:8,ry:9},{id:"throat",label:"Throat",cx:50,cy:24,rx:5,ry:3},{id:"chest",label:"Heart / Chest",cx:50,cy:34,rx:14,ry:8},{id:"solar",label:"Solar Plexus",cx:50,cy:45,rx:10,ry:5},{id:"gut",label:"Gut",cx:50,cy:55,rx:11,ry:6},{id:"pelvis",label:"Pelvis / Root",cx:50,cy:66,rx:13,ry:6},{id:"leftArm",label:"Left Arm",cx:27,cy:42,rx:5,ry:16},{id:"rightArm",label:"Right Arm",cx:73,cy:42,rx:5,ry:16},{id:"leftLeg",label:"Left Leg",cx:40,cy:82,rx:6,ry:16},{id:"rightLeg",label:"Right Leg",cx:60,cy:82,rx:6,ry:16}];
+const METHODS=[
+{g:"Classical Psychedelics",items:["Psilocybin (mushrooms)","LSD","DMT (smoked/vaporized/cartridge)","5-MeO-DMT","Mescaline / San Pedro / Peyote","2C-B","2C-I","2C-E","2C-T-2","2C-T-7","4-AcO-DMT","4-AcO-DET","4-AcO-MET","AL-LAD","ETH-LAD","LSA (morning glory / HBWR)","DPT","DiPT","ALEPH-2 / ALEPH-7","Ibogaine / Iboga"]},
+{g:"Plant Medicines & Traditional",items:["Ayahuasca","Psilohuasca","Salvia divinorum","Amanita muscaria","Cacao ceremony","Rap\u00e9 / Sananga","Kambo","Blue lotus","Syrian rue (harmine/harmaline)","Kanna"]},
+{g:"Empathogens & Entactogens",items:["MDMA","MDA","6-APB / 5-APB","Sassafras","MDAI","2-MMC / 3-MMC / 4-MMC (cathinones)"]},
+{g:"Dissociatives",items:["Ketamine \u2014 racemic","Ketamine \u2014 S-isomer","Ketamine \u2014 R-isomer","Ketamine (clinical/therapeutic)","Nitrous oxide","DXM","MXE","DCK (deschloroketamine)","3-MeO-PCP","PCP analogs","GHB / GBL / BDO","Methaqualone (Quaaludes)"]},
+{g:"Cannabis & Cannabinoids",items:["Cannabis (smoked/vaped)","Cannabis edibles (high dose)","THC concentrates / dabs","CBD-dominant","CBG / CBN blends","Hashish","Cannabis + meditation/intention"]},
+{g:"Breathwork",items:["Holotropic breathwork","Wim Hof / Tummo","Pranayama (extended)","Rebirthing breathwork","DMT breathwork / activation","Biodynamic breathwork","Box breathing (extended session)","Shamanic breathwork","Circular connected breathing"]},
+{g:"Meditation & Contemplative",items:["Vipassana (retreat format)","Vipassana (daily practice)","Zen / Zazen","Transcendental meditation","Yoga nidra","Loving-kindness / Metta","Dzogchen / Mahamudra","Centering prayer / Contemplative Christianity","Sufi dhikr / whirling","Kabbalistic meditation","Trataka (candle gazing)","Jhana practice","Non-dual inquiry / self-inquiry"]},
+{g:"Movement & Embodiment",items:["Ecstatic dance","Kundalini yoga","Hatha / Vinyasa (deep practice)","Tai chi / Qigong","Contact improvisation","5Rhythms / Open Floor","Authentic movement","Martial arts (deep state)","Capoeira","Whirling / spinning"]},
+{g:"Sound & Frequency",items:["Sound bath / Gong","Tuning fork therapy","Overtone chanting / Throat singing","Didgeridoo healing","Solfeggio frequency work","Binaural beats / Isochronal tones","Live ceremonial music","Kirtan / Devotional chanting","Drum journey / Shamanic drumming","DJ set / Electronic music (intentional)","Singing bowls (Tibetan/crystal)","Voice toning / Extended vocal"]},
+{g:"Somatic & Bodywork",items:["Craniosacral therapy","EMDR","Somatic experiencing","Myofascial release / Rolfing","Acupuncture / Electroacupuncture","Chiropractic (deep work)","Reiki / Energy healing","Trauma release exercises (TRE)","Osteopathic manipulation","Watsu / Aquatic bodywork","Sensory integration therapy"]},
+{g:"Sexual & Tantric",items:["Tantric breathwork","Kundalini activation (sexual)","Extended orgasmic states","Tantric meditation (partnered)","Tantric meditation (solo)","Semen retention practices","Sacred sexuality ceremony","Orgasmic meditation"]},
+{g:"Fasting & Metabolic",items:["Water fasting (24-72h)","Extended water fasting (72h+)","Dry fasting","Ketogenic state (deep)","Dopamine fasting","Juice cleanse (extended)","Dieta (plant diet / master plant)","Sugar/stimulant withdrawal (intentional)"]},
+{g:"Social & Relational",items:["Eye-gazing","Authentic relating / Circling","Group ceremony","Psychodrama","Constellation work","Cuddle therapy / Platonic touch","Council / Talking circle","Co-regulation practices"]},
+{g:"Sensory & Environmental",items:["Float tank / Sensory deprivation","Darkness retreat","Sweat lodge / Temazcal","Sauna (extended)","Cold exposure (extended)","Light machines (Lucia / Kasina / Pandora)","VR-induced states","Nature immersion (extended solo)"]},
+{g:"Extreme Environment & Ordeal",items:["Vision quest","Wilderness solo","Ultramarathon / Endurance event","High-altitude states","Sun dance / Ordeal ritual","Sleep deprivation (intentional)","Extended silence (non-meditation)","Fire walking"]},
+{g:"Pharmacological (Non-Psychedelic)",items:["Kratom","Kava","Phenibut","Modafinil / Armodafinil","Beta-blockers (state modulation)","Pregabalin / Gabapentin","GABAergics (other)","BPC-157 / Peptide stacks","Lion\u2019s mane + Niacin protocol","5-HTP / Tryptophan","Selank / Semax","Nootropic stacks","Research chemicals (unspecified)"]},
+{g:"Dream & Liminal States",items:["Lucid dreaming","Dream incubation","Hypnagogia / Sleep transition","Sleep paralysis navigation","Astral projection / OBE practice","Dream yoga (Tibetan)"]},
+{g:"Endogenous & Spontaneous",items:["Flow state (sport)","Flow state (creative / musical)","Near-death experience","Spontaneous mystical experience","Peak experience (unplanned)","Orgasmic / Sexual peak states","Grief / Extreme emotion states","Childbirth"]},
+{g:"Combination & Other",items:["Other (describe below)"]}
+];
+const TO=[{label:"Frozen",value:-3,icon:"\u25C8"},{label:"Very Slow",value:-2,icon:"\u25C7"},{label:"Slow",value:-1,icon:"\u25CB"},{label:"Normal",value:0,icon:"\u25CF"},{label:"Fast",value:1,icon:"\u25C9"},{label:"Very Fast",value:2,icon:"\u25C6"},{label:"Timeless",value:3,icon:"\u221E"}];
+const PPIA_TYPES=[
+{code:"SCI",label:"Scientific",desc:"Understanding mechanisms and processes"},
+{code:"THE",label:"Therapeutic",desc:"Healing, growth, and personal transformation"},
+{code:"SPI",label:"Spiritual / Mystical",desc:"Unity, transcendence, the sacred"},
+{code:"IND",label:"Indigenous / Traditional",desc:"Ceremonial practice, ancestral connection"},
+{code:"COG",label:"Cognitive",desc:"Performance, creativity, problem-solving"},
+{code:"NEO",label:"Neo-Shamanic",desc:"Facilitating transformation for others"},
+{code:"REC",label:"Social / Celebratory",desc:"Connection, joy, shared experience"},
+{code:"PHI",label:"Philosophical",desc:"Investigating the nature of reality"},
+{code:"CLI",label:"Clinical / Research",desc:"Structured study within controlled settings"}
+];
+const EXP_FREQ=[
+{value:"first",label:"First time",desc:"This was new territory"},
+{value:"few",label:"A few times",desc:"I\'ve been here before"},
+{value:"experienced",label:"Experienced",desc:"I know this landscape"},
+{value:"deep",label:"Deep practitioner",desc:"This is part of my ongoing practice"}
+];
+const PHYS_FACTORS=["Respiratory difficulty","Nausea","Muscle tension","Temperature dysregulation","Headache","Heart rate elevation","Dizziness / vertigo","Jaw clenching","Congestion / sinus","Fatigue / heaviness","Restlessness","Gastrointestinal distress","Pain (pre-existing)","Injury / physical limitation","Recent exercise","Sleep deprived","Dehydrated","Full stomach","Empty stomach","Menstrual cycle","Other physical factor"];
+const SIGNAL_CONTACT="+1-415-338-9092";
+const SOCIAL_CTX=["Solo","With a partner","Small group (2-6)","Larger group / ceremony","Festival / event","Clinical / therapeutic setting"];
+const SL=["Speak","Context","Dimensions","Body","Connection","Share"];
+const fmt=s=>Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+function ps(p){if(!p)return{w:0,c:"var(--border)",l:""};let s=0;if(p.length>=8)s++;if(p.length>=14)s++;if(/[A-Z]/.test(p)&&/[a-z]/.test(p))s++;if(/\d/.test(p))s++;if(/[^A-Za-z0-9]/.test(p))s++;if(s<=1)return{w:20,c:"var(--danger)",l:"Weak"};if(s<=2)return{w:40,c:"var(--accent-warm)",l:"Fair"};if(s<=3)return{w:65,c:"var(--gold)",l:"Good"};if(s<=4)return{w:85,c:"var(--phthalo-light)",l:"Strong"};return{w:100,c:"var(--phthalo-light)",l:"Excellent"}}
+
+function Slider({label,value,onChange,lo,hi,color}){return(<div className="slider-group"><div className="slider-header"><span className="slider-label">{label}</span><span className="slider-value" style={{color}}>{value}</span></div><input type="range" min={0} max={100} value={value} onChange={e=>onChange(+e.target.value)} style={{accentColor:color}}/><div className="slider-anchors"><span className="slider-anchor">{lo}</span><span className="slider-anchor">{hi}</span></div></div>)}
+
+function BodyMap({active,onToggle}){return(<svg viewBox="0 0 100 100" className="body-svg"><ellipse cx="50" cy="12" rx="10.5" ry="11.5" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.6"/><rect x="35" y="23" width="30" height="31" rx="9" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.6"/><rect x="21" y="26" width="12" height="33" rx="5.5" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.6"/><rect x="67" y="26" width="12" height="33" rx="5.5" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.6"/><rect x="35" y="54" width="13" height="36" rx="5.5" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.6"/><rect x="52" y="54" width="13" height="36" rx="5.5" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.6"/>{BR.map(r=>{const lv=active[r.id]||0;const on=lv>0;return<ellipse key={r.id} cx={r.cx} cy={r.cy} rx={r.rx} ry={r.ry} fill={lv>0?("rgba(0,121,107,"+(lv*0.25)+")"):"transparent"} stroke={lv>0?"var(--phthalo-light)":"transparent"} strokeWidth={lv>0?(0.6+lv*0.3):0} opacity={lv>0?(0.5+lv*0.15):0.25} onClick={()=>onToggle(r.id)}><title>{r.label}</title></ellipse>})}</svg>)}
+
+function App(){
+  const[handle,setHandle]=useState("");const[pass,setPass]=useState("");const[vault,setVault]=useState(false);const[showP,setShowP]=useState(false);const[keepAudio,setKeepAudio]=useState(false);
+  const[step,setStep]=useState(0);const[rec,setRec]=useState(false);const[hasRec,setHasRec]=useState(false);const[recDur,setRecDur]=useState(0);const[amp,setAmp]=useState(0);const[el,setEl]=useState(0);
+  const[methods,setMethods]=useState([]);const[selKey,setSelKey]=useState(0);const[prime,setPrime]=useState("");const[customM,setCustomM]=useState("");const[doses,setDoses]=useState({});const[setting,setSetting]=useState("");const[intention,setIntention]=useState("");const[socialCtx,setSocialCtx]=useState("");const[ppiaTypes,setPpiaTypes]=useState([]);const[expFreq,setExpFreq]=useState("");
+  const[arousal,setArousal]=useState(50);const[valence,setValence]=useState(50);const[timePer,setTimePer]=useState(0);const[ego,setEgo]=useState(0);
+  const[bodyA,setBodyA]=useState({});const[bodyN,setBodyN]=useState("");const[physState,setPhysState]=useState([]);const[physNotes,setPhysNotes]=useState("");const[cS,setCS]=useState(50);const[cO,setCO]=useState(50);const[cW,setCW]=useState(50);
+  const[exporting,setExporting]=useState(false);const[exported,setExported]=useState(false);
+  const mr=useRef(null),ac=useRef(null),an=useRef(null),af=useRef(null),ti=useRef(null),ch=useRef([]),blobs=useRef([]);
+
+  const startRec=useCallback(async()=>{try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});ac.current=new AudioContext();const src=ac.current.createMediaStreamSource(stream);an.current=ac.current.createAnalyser();an.current.fftSize=256;src.connect(an.current);mr.current=new MediaRecorder(stream);ch.current=[];mr.current.ondataavailable=e=>{if(e.data.size>0)ch.current.push(e.data)};mr.current.onstop=()=>{const blob=new Blob(ch.current,{type:"audio/webm"});blobs.current=[blob];setHasRec(true);setRecDur(el);stream.getTracks().forEach(t=>t.stop())};mr.current.start();setRec(true);setEl(0);ti.current=setInterval(()=>setEl(p=>p+1),1000);const tick=()=>{if(an.current){const d=new Uint8Array(an.current.frequencyBinCount);an.current.getByteFrequencyData(d);setAmp(d.reduce((a,b)=>a+b,0)/d.length/255)}af.current=requestAnimationFrame(tick)};tick()}catch(e){alert("Microphone access is needed for voice capture.")}},[el]);
+  const stopRec=useCallback(()=>{if(mr.current?.state!=="inactive")mr.current?.stop();if(af.current)cancelAnimationFrame(af.current);if(ti.current)clearInterval(ti.current);if(ac.current)ac.current.close();setRec(false);setAmp(0)},[]);
+  const clearRec=()=>{blobs.current=[];setHasRec(false);setRecDur(0)};
+  const togBody=id=>setBodyA(p=>{const cur=p[id]||0;if(cur>=3){const n={...p};delete n[id];return n}return{...p,[id]:cur+1}});
+
+  const doExport=async()=>{setExporting(true);try{const payload={_schema:"sensoria-capture-v0.2-encrypted",_encryption:"AES-256-GCM PBKDF2-310k",_refs:["EDI-8","Watts Connectedness","VAS Tier 1","5D-ASC temporal","Somatic Tier 1"],captured_at:new Date().toISOString(),explorer:handle||"anonymous",context:{methods:methods.map(m=>({name:m==="Other (describe below)"?customM:m,dose:doses[m]||null,is_primary:m===prime})),setting,social_context:socialCtx||null,intention,explorer_typology:ppiaTypes.length?ppiaTypes:null,experience_frequency:expFreq||null},voice:{has_recording:hasRec,duration_seconds:recDur,audio:keepAudio?"voice.enc":"discarded"},tier1:{arousal,valence,temporal:{v:timePer,l:TO.find(t=>t.value===timePer)?.label},somatic:{regions:Object.entries(bodyA).filter(([k,v])=>v>0).map(([id,level])=>({region:BR.find(r=>r.id===id)?.label,intensity:level,intensity_label:["mild","strong","intense"][level-1]})),notes:bodyN||null}},physical_state:{factors:physState.length?physState:null,notes:physNotes||null},tier2:{ego_dissolution:ego,connectedness:{self:cS,others:cO,world:cW}}};
+  const enc=await encryptPayload(payload,pass);const jb=new Blob([enc],{type:"application/octet-stream"});const a=document.createElement("a");a.href=URL.createObjectURL(jb);a.download=(handle||"anon")+"-"+Date.now()+".sensoria.enc";a.click();URL.revokeObjectURL(a.href);
+  if(keepAudio&&blobs.current[0]){const eb=await encryptBlob(blobs.current[0],pass);const a2=document.createElement("a");a2.href=URL.createObjectURL(eb);a2.download=(handle||"anon")+"-voice-"+Date.now()+".sensoria.enc";a2.click();URL.revokeObjectURL(a2.href)}
+  setExported(true)}catch(e){console.error(e);alert("Encryption failed.")}setExporting(false)};
+
+  const burn=()=>{if(confirm("This clears everything. New handle, new passphrase, fresh start.")){setHandle("");setPass("");setVault(false);setHasRec(false);setRecDur(0);blobs.current=[];setMethods([]);setPrime("");setDoses({});setSetting("");setIntention("");setSocialCtx("");setPpiaTypes([]);setExpFreq("");setArousal(50);setValence(50);setTimePer(0);setEgo(0);setBodyA({});setBodyN("");setPhysState([]);setPhysNotes("");setCS(50);setCO(50);setCW(50);setExported(false);setStep(0)}};
+
+  const os=rec?1+(amp*0.35):1;const og=rec?30+(amp*50):0;const st=ps(pass);const canV=handle.trim().length>=1&&pass.length>=8;
+
+  return(<div className="app">
+    <div className="header"><div className="header-lab">Sensoria Research</div><div className="header-title">Experience Capture</div><div className="header-sub">{vault?<span>Capturing as <strong style={{color:"var(--phthalo-light)"}}>{handle}</strong> &middot; <span className="enc-badge">{"\u25C6"} encrypted</span></span>:"Map your experience. Own your data."}</div></div>
+
+    {vault&&<div className="progress">{SL.map((l,i)=>(<div key={l} className="progress-step"><div className={"progress-bar "+(i===step?"active":i<step?"done":"")}/><span className={"progress-label "+(i===step?"active":i<step?"done":"")}>{l}</span></div>))}</div>}
+
+    {!vault&&<div className="step-enter">
+      <div className="card vault-card"><span className="vault-icon">{"\u25C9"}</span><div className="card-title" style={{textAlign:"center"}}>Your vault</div><p className="card-desc" style={{textAlign:"center"}}>Everything you share here gets encrypted on your device before it goes anywhere. Pick a handle and a passphrase. That&apos;s it.</p>
+        <div className="field"><label className="field-label">Handle</label><input className="field-input" placeholder="Any name that isn't your real one" value={handle} onChange={e=>setHandle(e.target.value)} autoComplete="off"/><div className="field-hint">Only exists inside your encrypted file.</div></div>
+        <div className="field"><label className="field-label">Passphrase</label><div style={{position:"relative"}}><input className="field-input" type={showP?"text":"password"} placeholder="8+ characters you won't forget" value={pass} onChange={e=>setPass(e.target.value)} autoComplete="off" style={{paddingRight:60}}/><button className="btn-ghost" onClick={()=>setShowP(!showP)} style={{position:"absolute",right:4,top:"50%",transform:"translateY(-50%)",padding:"4px 8px",fontSize:11}}>{showP?"Hide":"Show"}</button></div>
+          {pass&&<><div className="strength-bar"><div className="strength-fill" style={{width:st.w+"%",background:st.c}}/></div><div className="field-hint" style={{color:st.c,marginTop:6}}>{st.l}</div></>}
+          <div className="field-hint" style={{marginTop:8}}>Encrypts everything locally. We never see it, never store it, and can&apos;t recover it.</div></div>
+        <button className="btn-primary" disabled={!canV} onClick={()=>setVault(true)} style={{marginTop:8}}>Begin</button></div>
+      <div className="card" style={{padding:"18px 20px"}}><div style={{fontSize:13,fontWeight:600,marginBottom:12}}>How your data stays yours</div>
+        <div className="shield-row"><span className="shield-icon">{"\u25C6"}</span><span className="shield-text"><strong>Runs in your browser.</strong> No server, no database, nothing to breach.</span></div>
+        <div className="shield-row"><span className="shield-icon">{"\u25C6"}</span><span className="shield-text"><strong>Encrypted before export.</strong> Without your passphrase, the file is noise.</span></div>
+        <div className="shield-row"><span className="shield-icon">{"\u25C6"}</span><span className="shield-text"><strong>No identity required.</strong> No email, no phone, no account.</span></div>
+        <div className="shield-row"><span className="shield-icon">{"\u25C6"}</span><span className="shield-text"><strong>Burn anytime.</strong> Wipe everything and start fresh whenever you want.</span></div></div>
+    </div>}
+
+    {vault&&step===0&&<div className="step-enter">
+      <div className="card"><div style={{textAlign:"center",marginBottom:8}}><p className="card-desc" style={{marginBottom:0}}>Talk about what happened. What shifted, what surprised you, what\'s still with you. Go as deep as you want. <em>Your voice captures what words on a screen can\'t.</em></p><p style={{fontSize:11,color:"var(--text-dim)",marginTop:8,lineHeight:1.5}}>Sit with it. Describe it honestly. That\'s the whole method.</p></div>
+        <div className="orb-container" onClick={rec?stopRec:startRec}><div className={"orb-ring "+(rec?"recording":"")} style={{transform:"scale("+os+")",background:rec?"radial-gradient(circle,rgba(0,121,107,0.2) 0%,transparent 70%)":"radial-gradient(circle,rgba(0,121,107,0.06) 0%,transparent 70%)",boxShadow:rec?"0 0 "+og+"px rgba(0,121,107,0.3)":"none"}}><div className={"orb-core "+(rec?"recording":"")}/></div></div>
+        <div className="recording-status">{rec?<><div className="rec-dot"/><span className="rec-label">Listening</span><span className="rec-time">{fmt(el)}</span></>:<span className="idle-hint">{hasRec?"Captured \u2014 tap to redo":"Tap when you\'re ready"}</span>}</div>
+        {hasRec&&!rec&&<div className="rec-list-divider"><div className="rec-item"><div className="rec-item-left"><div className="rec-item-dot"/><span className="rec-item-label">Voice capture</span></div><div className="rec-item-actions"><span className="rec-item-dur">{fmt(recDur)}</span><button className="rec-item-btn danger" onClick={clearRec}>{"\u2715"}</button></div></div></div>}</div>
+      <div className="card" style={{padding:"14px 20px"}}><div className="toggle-row"><div><div className="toggle-label">Include voice</div><div className="field-hint" style={{marginTop:2}}>{keepAudio?"Richer data, but heads up &mdash; your voice is identifying even when encrypted.":"Audio stays on your device. The rest still captures the core signal."}</div></div><div className={"toggle-track "+(keepAudio?"on":"")} onClick={()=>setKeepAudio(!keepAudio)}><div className="toggle-thumb"/></div></div></div>
+    </div>}
+
+        {vault&&step===1&&<div className="step-enter">
+      <div className="card"><div className="card-title">What were you exploring?</div><p className="card-desc">Add each compound, practice, or modality involved.</p>
+        <div className="field"><select key={selKey} className="field-input" defaultValue="" onChange={e=>{if(e.target.value&&!methods.includes(e.target.value)){setMethods(p=>[...p,e.target.value]);if(!prime)setPrime(e.target.value)}setSelKey(k=>k+1)}} style={{cursor:"pointer"}}><option value="" disabled>Add a method, compound, or practice...</option>{METHODS.map(g=>(<optgroup key={g.g} label={g.g}>{g.items.map(m=>(<option key={m} value={m} disabled={methods.includes(m)}>{m}</option>))}</optgroup>))}</select></div>
+        {methods.length>0&&<div style={{marginTop:12}}>{methods.map((m,i)=>(<div key={m} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:12,background:prime===m?"var(--phthalo-dim)":"rgba(255,255,255,0.03)",border:"1px solid "+(prime===m?"var(--phthalo-light)":"var(--border)"),marginBottom:6,transition:"all 0.2s"}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}><span style={{fontSize:13,color:prime===m?"var(--phthalo-light)":"var(--text)",fontWeight:500,cursor:"pointer"}} onClick={()=>setPrime(m)}>{m}</span>{prime===m&&methods.length>1&&<span style={{fontSize:9,padding:"2px 6px",borderRadius:8,background:"var(--phthalo-dim)",color:"var(--phthalo-light)",letterSpacing:"0.05em"}}>PRIMARY</span>}</div>
+            <input className="field-input" placeholder="Dose — e.g. 100mg, 3g, 2 hits, moderate" value={doses[m]||""} onChange={e=>setDoses(p=>({...p,[m]:e.target.value}))} style={{padding:"8px 12px",fontSize:12,borderRadius:8}}/>
+          </div>
+          <span onClick={()=>{setMethods(p=>p.filter(x=>x!==m));setDoses(p=>{const n={...p};delete n[m];return n});if(prime===m)setPrime(methods.find(x=>x!==m)||"")}} style={{cursor:"pointer",color:"var(--text-dim)",fontSize:16,flexShrink:0,padding:"0 4px"}}>&times;</span>
+        </div>))}</div>}
+        {methods.length>1&&<p style={{fontSize:11,color:"var(--text-dim)",marginTop:4}}>Tap a name to mark the lead. Each one gets its own dose field.</p>}
+        {methods.includes("Other (describe below)")&&<input className="field-input" placeholder="Describe the method or state" value={customM} onChange={e=>setCustomM(e.target.value)} style={{marginTop:8}}/>}
+      </div>
+
+      <div className="card"><div className="card-title">Context</div>
+        <div className="field"><label className="field-label">Setting</label><input className="field-input" placeholder="Forest, ceremony, bedroom, retreat center" value={setting} onChange={e=>setSetting(e.target.value)}/></div>
+        <div className="field"><label className="field-label">Who were you with?</label><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{SOCIAL_CTX.map(s=>(<span key={s} className={"chip small "+(socialCtx===s?"active":"")} onClick={()=>setSocialCtx(socialCtx===s?"":s)}>{s}</span>))}</div></div>
+        <div className="field"><label className="field-label">Intention</label><input className="field-input" placeholder="Healing, curiosity, surrender, connection, or nothing at all..." value={intention} onChange={e=>setIntention(e.target.value)}/></div>
+      </div>
+
+      <div className="card"><div className="card-title">A little about you</div><p className="card-desc">Helps us understand the lens you\'re looking through.</p>
+        <div className="field"><label className="field-label">What drives your exploration? <span style={{fontWeight:400,color:"var(--text-dim)"}}>Select all that apply</span></label>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{PPIA_TYPES.map(t=>(<span key={t.code} className={"chip small "+(ppiaTypes.includes(t.code)?"active":"")} onClick={()=>setPpiaTypes(p=>p.includes(t.code)?p.filter(x=>x!==t.code):[...p,t.code])} title={t.desc}>{t.label}</span>))}</div></div>
+        <div className="field"><label className="field-label">How familiar are you with this?</label>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{EXP_FREQ.map(e=>(<span key={e.value} className={"chip small "+(expFreq===e.value?"active":"")} onClick={()=>setExpFreq(expFreq===e.value?"":e.value)}>{e.label}</span>))}</div></div>
+      </div>
+    </div>}
+
+    {vault&&step===2&&<div className="step-enter">
+      <div className="card"><div className="card-title">The peak</div><p className="card-desc">Go back to the most vivid moment. Where were you on these?</p>
+        <Slider label="Intensity" value={arousal} onChange={setArousal} lo="Subtle" hi="Overwhelming" color="var(--accent-warm)"/>
+        <Slider label="Emotional tone" value={valence} onChange={setValence} lo="Deeply challenging" hi="Profoundly beautiful" color="var(--accent-cool)"/>
+        <Slider label="Sense of self" value={ego} onChange={setEgo} lo="Intact, familiar self" hi="Self completely dissolved" color="var(--phthalo-light)"/></div>
+      <div className="card"><div className="card-title">Time</div><p className="card-desc">What was time doing?</p><div className="time-grid">{TO.map(t=>(<div key={t.value} className={"time-option "+(timePer===t.value?"active":"")} onClick={()=>setTimePer(t.value)}><div className="time-option-icon">{t.icon}</div><div className="time-option-label">{t.label}</div></div>))}</div></div>
+    </div>}
+
+    {vault&&step===3&&<div className="step-enter">
+      <div className="card"><div className="card-title">The body</div><p className="card-desc">Tap once for mild, twice for strong, three times for intense. Tap again to clear.</p><div className="body-map-container"><BodyMap active={bodyA} onToggle={togBody}/><div className="chips" style={{justifyContent:"center"}}>{BR.map(r=>{const lv=bodyA[r.id]||0;return(<span key={r.id} className={"chip small "+(lv>0?"active":"")} onClick={()=>togBody(r.id)} style={lv>0?{borderWidth:lv+"px"}:{}}>{r.label}{lv>0&&<span style={{marginLeft:4,fontSize:10,opacity:0.6}}>{["·","●","⬤"][lv-1]}</span>}</span>)})}</div></div></div>
+      <div className="card"><label className="field-label">What was the body telling you?</label><textarea className="field-textarea" placeholder="Warmth rising through the chest, tingling in the hands, a sense of expansion..." value={bodyN} onChange={e=>setBodyN(e.target.value)}/></div>
+      <div className="card"><div className="card-title">Physical context</div><p className="card-desc">Anything physical that shaped things &mdash; how you felt going in, discomfort, side effects.</p>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{PHYS_FACTORS.map(f=>(<span key={f} className={"chip small "+(physState.includes(f)?"active":"")} onClick={()=>setPhysState(p=>p.includes(f)?p.filter(x=>x!==f):[...p,f])}>{f}</span>))}</div>
+        {physState.length>0&&<div className="field" style={{marginTop:12}}><textarea className="field-textarea" placeholder="How did these show up in the experience?" value={physNotes} onChange={e=>setPhysNotes(e.target.value)} style={{minHeight:60}}/></div>}
+      </div>
+    </div>}
+
+    {vault&&step===4&&<div className="step-enter">
+      <div className="card"><div className="card-title">Connection</div><p className="card-desc">Where did your sense of connection land?</p>
+        <Slider label="Connection to yourself" value={cS} onChange={setCS} lo="Distant from myself" hi="Completely at home in myself" color="var(--accent-warm)"/>
+        <Slider label="Connection to others" value={cO} onChange={setCO} lo="Isolated" hi="Profoundly connected" color="var(--accent-cool)"/>
+        <Slider label="Connection to the world" value={cW} onChange={setCW} lo="Disconnected from everything" hi="Woven into everything" color="var(--phthalo-light)"/></div>
+    </div>}
+
+    {vault&&step===5&&<div className="step-enter">
+      <div className="card"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><div className="card-title">Review</div><div className="vault-badge"><div className="vault-badge-dot"/>{handle}</div></div>
+        <div className="summary-card"><div className="summary-card-label">Capture Data</div><div className="summary-grid">{[["Voice capture",hasRec?fmt(recDur):"None"],["Audio export",keepAudio?"Encrypted":"Discarded"],["Method(s)",methods.length?methods.join(", ").slice(0,40)+(methods.join(", ").length>40?"...":""):"\u2014"],["Explorer type",ppiaTypes.length?ppiaTypes.join(", "):"\u2014"],["Familiarity",EXP_FREQ.find(e=>e.value===expFreq)?.label||"\u2014"],["Intensity",arousal],["Emotional tone",valence],["Self dissolution",ego],["Time",TO.find(t=>t.value===timePer)?.label],["Body regions",Object.keys(bodyA).filter(k=>bodyA[k]>0).length||"None"],["Self connection",cS],["Other connection",cO],["World connection",cW]].map(([k,v])=>(<div key={k} className="summary-row"><span className="summary-key">{k}</span><span className="summary-val">{v}</span></div>))}</div></div>
+        <div className="summary-card" style={{background:"rgba(0,121,107,0.06)",border:"1px solid rgba(0,121,107,0.15)"}}><div className="summary-card-label" style={{color:"var(--phthalo-light)"}}>Encryption</div><div className="shield-text" style={{fontSize:12,lineHeight:1.6}}>Encrypted with <strong>AES-256-GCM</strong>. Unreadable without your passphrase.{keepAudio&&" Voice files are encrypted separately."}</div></div>
+        
+        <button className="btn-primary" onClick={doExport} disabled={exporting}>{exporting?"Encrypting...":exported?"\u2713 Saved \u2014 tap to save again":"Encrypt & save"}</button>
+        <p style={{fontSize:11,color:"var(--text-dim)",textAlign:"center",marginTop:10,lineHeight:1.5}}>Saves encrypted files to your device. Nothing leaves until you send it.</p>
+        {exported&&<p style={{color:"var(--phthalo-light)",fontSize:12,textAlign:"center",marginTop:14,lineHeight:1.5}}>Saved. The encryption means you can share these files however is easiest &mdash; email, message, airdrop. They\'re unreadable without your passphrase.</p>}</div>
+      <div className="card">
+        <div className="card-title">Send it over</div>
+        <p className="card-desc" style={{marginBottom:12}}>Open Signal and send your files to:</p>
+        <div style={{textAlign:"center",padding:"14px",background:"rgba(0,121,107,0.06)",borderRadius:12,border:"1px solid rgba(0,121,107,0.15)",marginBottom:14}}>
+          <div style={{fontSize:18,fontWeight:600,color:"var(--phthalo-light)",fontFamily:"'JetBrains Mono',monospace",letterSpacing:"0.03em"}}>{SIGNAL_CONTACT}</div>
+          <div style={{fontSize:11,color:"var(--text-dim)",marginTop:4}}>Sensoria Research · Signal</div>
+        </div>
+        <div className="shield-row"><span className="shield-icon">{"1"}</span><span className="shield-text">Attach your <strong>.sensoria.enc</strong> file{keepAudio&&hasRec?" and voice file":""} as an attachment</span></div>
+        <div className="shield-row"><span className="shield-icon">{"2"}</span><span className="shield-text">Share your passphrase <strong>separately</strong> &mdash; different message, or in person</span></div>
+        <p style={{fontSize:11,color:"var(--text-dim)",textAlign:"center",marginTop:12,lineHeight:1.6}}>Passphrase locks the file. Signal encrypts the channel. No middlemen.</p>
+      </div>
+      <div className="card" style={{background:"linear-gradient(135deg, rgba(0,121,107,0.08) 0%, rgba(255,210,141,0.06) 100%)",border:"1px solid rgba(0,121,107,0.25)"}}>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontSize:18,marginBottom:8}}>{"◉"}</div>
+          <div className="card-title" style={{textAlign:"center",marginBottom:6}}>Thank you</div>
+          <p style={{fontSize:13,color:"var(--text-secondary)",lineHeight:1.55,marginBottom:16,maxWidth:300,margin:"0 auto 16px"}}>Every report helps build something that doesn\'t exist yet &mdash; a rigorous, community-owned map of human consciousness.</p>
+          <p style={{fontSize:13,color:"var(--text-secondary)",lineHeight:1.55,marginBottom:16}}>The <strong style={{color:"var(--phthalo-light)"}}>Sovereign Explorer program</strong> is where the deeper work lives &mdash; validated practice, real experiences, and a global network of people who take this seriously.</p>
+          <a href="https://sensoriaresearch.org/certified-psychonauts" target="_blank" rel="noopener" style={{display:"inline-block",padding:"12px 24px",borderRadius:10,background:"var(--phthalo-dim)",border:"1px solid var(--phthalo-light)",color:"var(--phthalo-light)",fontSize:13,fontWeight:600,textDecoration:"none",transition:"all 0.2s",fontFamily:"'DM Sans',sans-serif"}}>Explore the program &rarr;</a>
+        </div>
+      </div>
+      <div style={{textAlign:"center",marginTop:8,marginBottom:24}}><button className="btn-danger-ghost" onClick={burn}>Burn this vault</button><div className="field-hint" style={{marginTop:8,textAlign:"center"}}>Clean slate. New handle, new passphrase, no trace.</div></div>
+      <div className="footer-note">Sensoria Research<br/>Encrypted &middot; Pseudonymous &middot; Sovereign<br/><br/><em style={{color:"var(--text-secondary)"}}>Sovereign psychonauts mapping consciousness through experience.</em></div>
+    </div>}
+
+    {vault&&<div className="nav-footer">{step>0&&<button className="btn-secondary" onClick={()=>setStep(s=>s-1)}>Back</button>}{step<5&&<button className="btn-primary nav-continue" onClick={()=>setStep(s=>s+1)}>{step===0&&!hasRec?"Skip voice for now \u2192":"Continue \u2192"}</button>}</div>}
+  </div>)}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
