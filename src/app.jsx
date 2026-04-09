@@ -220,7 +220,13 @@ export default function App() {
           </button>
           <button
             className="btn-primary nav-continue"
-            onClick={() => dispatch({ type: 'NEXT_STEP' })}
+            onClick={() => {
+              // Auto-enable voice export when entering Review if recording exists
+              if (state.step === 5 && recording.hasRecording && !state.voice.keepAudio) {
+                dispatch({ type: 'SET_VOICE', payload: { keepAudio: true } })
+              }
+              dispatch({ type: 'NEXT_STEP' })
+            }}
           >
             Continue &rarr;
           </button>

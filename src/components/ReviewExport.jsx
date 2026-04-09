@@ -99,6 +99,36 @@ export default function ReviewExport({ state, recording, vault, onBurn }) {
           </div>
         </div>
 
+        {/* Audio toggle — shown prominently if recording exists */}
+        {hasRec && (
+          <div
+            className="summary-card"
+            style={{
+              background: keepAudio ? 'rgba(13,74,50,0.06)' : 'rgba(232,228,223,0.025)',
+              border: keepAudio ? '1px solid rgba(13,74,50,0.15)' : '1px solid var(--border-subtle)',
+            }}
+          >
+            <div className="toggle-row" style={{ padding: 0 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
+                  Voice recording
+                </div>
+                <div className="field-hint" style={{ marginTop: 0 }}>
+                  {keepAudio
+                    ? 'Your voice will be encrypted and included. It is identifying even when encrypted.'
+                    : 'Your voice will not be saved. Only the structured data will be kept.'}
+                </div>
+              </div>
+              <div
+                className={`toggle-track ${keepAudio ? 'on' : ''}`}
+                onClick={() => dispatch({ type: 'SET_VOICE', payload: { keepAudio: !keepAudio } })}
+              >
+                <div className="toggle-thumb" />
+              </div>
+            </div>
+          </div>
+        )}
+
         <div
           className="summary-card"
           style={{
@@ -111,25 +141,7 @@ export default function ReviewExport({ state, recording, vault, onBurn }) {
           </div>
           <div className="shield-text" style={{ fontSize: 12, lineHeight: 1.6 }}>
             Encrypted with <strong>AES-256-GCM</strong>. Unreadable without your passphrase.
-            {keepAudio && ' Voice files are encrypted separately.'}
-          </div>
-        </div>
-
-        {/* Audio toggle */}
-        <div className="toggle-row" style={{ borderTop: '1px solid var(--border-subtle)', marginTop: 8, paddingTop: 14 }}>
-          <div>
-            <div className="toggle-label">Include voice in export</div>
-            <div className="field-hint" style={{ marginTop: 2 }}>
-              {keepAudio
-                ? 'Richer data, but your voice is identifying even when encrypted.'
-                : 'Audio stays on your device. The structured data still captures the core signal.'}
-            </div>
-          </div>
-          <div
-            className={`toggle-track ${keepAudio ? 'on' : ''}`}
-            onClick={() => dispatch({ type: 'SET_VOICE', payload: { keepAudio: !keepAudio } })}
-          >
-            <div className="toggle-thumb" />
+            {keepAudio && hasRec && ' Voice files are encrypted separately.'}
           </div>
         </div>
 
