@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Infinite Zone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<style>
+/* Layout: one cabinet. Marquee on top, the screen, a control deck below. */
+:root {
+  color-scheme: dark;
+  --ink: #0d0b13;
+  --panel: #16131f;
+  --line: #2b2540;
+  --text: #f1ecf8;
+  --mute: #a39bb8;
+  --coral: #ff6b4a;
+  --gold: #f2b632;
+  --teal: #2ec4b6;
+  --display: 'Bungee', 'Arial Black', Impact, sans-serif;
+  --ui: 'Chakra Petch', 'Trebuchet MS', system-ui, sans-serif;
+  --mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { min-height: 100%; }
+body {
+  margin: 0;
+  background: radial-gradient(1200px 600px at 50% -10%, #241c3a 0%, var(--ink) 60%) var(--ink);
+  color: var(--text);
+  font: 500 15px/1.5 var(--ui);
+}
+.wrap { max-width: 1080px; margin: 0 auto; padding: 18px 16px 40px; display: grid; gap: 16px; }
+
+.marquee { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+.logo { margin: 0; font: 400 clamp(26px, 5vw, 40px)/1 var(--display); letter-spacing: 0.01em; color: var(--gold); text-shadow: 3px 3px 0 var(--coral), 6px 6px 0 #3b1d4a; }
+.tag { margin: 6px 0 0; color: var(--mute); font-size: 14px; }
+.seedbox { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.seedbox label { font-weight: 700; font-style: italic; color: var(--gold); text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px; }
+input[type="text"] { width: 150px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: 600 14px var(--mono); }
+button { font: 700 14px var(--ui); letter-spacing: 0.04em; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 8px 12px; cursor: pointer; min-height: 40px; }
+button:hover { border-color: var(--mute); }
+button:focus-visible, input:focus-visible, .cart input:focus-visible + .slot { outline: 2px solid var(--teal); outline-offset: 2px; }
+button.go { background: var(--gold); color: #24170a; border-color: var(--gold); text-transform: uppercase; }
+button[aria-pressed="true"] { color: var(--mute); text-decoration: line-through; }
+
+.stage { position: relative; width: 100%; aspect-ratio: 400 / 224; background: #000; border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 1px var(--line), 0 24px 60px -20px #000; }
+.stage canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
+
+.hud { position: absolute; inset: 0; pointer-events: none; padding: 2.2% 2.6%; display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; text-shadow: 2px 2px 0 rgba(0,0,0,0.6); font-size: clamp(11px, 2.3vw, 22px); line-height: 1.25; }
+.hud dl { margin: 0; display: grid; grid-template-columns: auto auto; gap: 0 0.8em; align-content: start; }
+.hud dt { font-weight: 700; font-style: italic; color: var(--gold); letter-spacing: 0.06em; }
+.hud dd { margin: 0; font-weight: 700; }
+.hud .empty dt { color: #ff4d4d; }
+.hud .right { text-align: right; }
+.hud .right b { display: block; font-weight: 700; }
+.hud .right small { display: block; color: #e2dcf0; font-weight: 600; font-size: 0.75em; letter-spacing: 0.04em; text-transform: uppercase; }
+
+.banner { position: absolute; left: 0; top: 34%; padding: 0.5em 1.2em 0.5em 5%; background: linear-gradient(90deg, rgba(13,11,19,0.85), rgba(13,11,19,0)); pointer-events: none; opacity: 0; transform: translateX(-40px); }
+.banner span { display: block; font: 400 clamp(18px, 4.4vw, 40px)/1 var(--display); color: var(--text); }
+.banner small { font-weight: 700; font-style: italic; color: var(--gold); font-size: clamp(11px, 2vw, 18px); letter-spacing: 0.1em; text-transform: uppercase; }
+.banner.show { animation: banner 3.2s ease-out forwards; }
+@keyframes banner { 0% { opacity: 0; transform: translateX(-40px); } 12% { opacity: 1; transform: none; } 80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: none; } }
+
+.overlay { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 16px; background: rgba(10, 8, 16, 0.55); }
+.overlay .card { display: grid; gap: 10px; justify-items: center; max-width: 92%; }
+.overlay h2 { margin: 0; font: 400 clamp(24px, 6.4vw, 60px)/1 var(--display); color: var(--gold); text-shadow: 3px 3px 0 var(--coral), 6px 6px 0 #3b1d4a; }
+.overlay p { margin: 0; color: #e7e1f2; font-size: clamp(12px, 1.9vw, 16px); }
+.pulse { animation: pulse 1.6s ease-out infinite; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.stats { display: grid; grid-template-columns: auto auto; gap: 2px 16px; font-variant-numeric: tabular-nums; font-size: clamp(12px, 2vw, 18px); text-align: left; }
+.stats dt { color: var(--gold); font-weight: 700; font-style: italic; }
+.stats dd { margin: 0; font-weight: 700; }
+
+.debug { position: absolute; left: 2.6%; bottom: 3%; margin: 0; padding: 6px 8px; font: 11px/1.4 var(--mono); color: #b8ffcf; background: rgba(0,0,0,0.6); border-radius: 6px; pointer-events: none; }
+
+.pad { display: none; justify-content: space-between; align-items: center; gap: 12px; user-select: none; -webkit-user-select: none; touch-action: none; }
+.pad .dirs { display: flex; gap: 8px; }
+.pad button { min-width: 64px; min-height: 64px; font-size: 22px; border-radius: 14px; background: var(--panel); touch-action: none; }
+.pad button.on { background: var(--line); }
+.pad .jump { min-width: 96px; min-height: 80px; border-radius: 40px; background: var(--coral); border-color: var(--coral); color: #2a0d06; font: 700 18px var(--ui); letter-spacing: 0.1em; }
+@media (pointer: coarse) { .pad { display: flex; } }
+
+.deck { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 860px) { .deck { grid-template-columns: 1fr; } }
+.panel { min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 10px; align-content: start; }
+.panel h3 { margin: 0; font: 400 15px/1.2 var(--display); letter-spacing: 0.02em; color: var(--text); }
+.panel p { margin: 0; color: var(--mute); font-size: 14px; }
+.panel code { font: 12px var(--mono); color: var(--teal); }
+.keys { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 14px; }
+.keys dt { font: 600 12px var(--mono); color: var(--text); background: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; justify-self: start; }
+.keys dd { margin: 0; color: var(--mute); }
+.cart { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; cursor: pointer; padding: 8px; border-radius: 10px; border: 1px solid transparent; }
+.cart:hover { border-color: var(--line); }
+.cart input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.cart .slot { width: 34px; height: 22px; border-radius: 4px; border: 2px solid var(--line); background: var(--ink); position: relative; margin-top: 2px; }
+.cart .slot::after { content: ''; position: absolute; left: 4px; right: 4px; bottom: 3px; height: 4px; border-radius: 2px; background: var(--line); }
+.cart input:checked + .slot { border-color: var(--teal); }
+.cart input:checked + .slot::after { background: var(--teal); }
+.cart .txt { display: grid; gap: 2px; }
+.cart b { font-weight: 700; }
+.cart small { color: var(--mute); font-size: 13px; line-height: 1.4; }
+.flow { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; counter-reset: f; }
+.flow li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; color: var(--mute); font-size: 14px; }
+.flow li::before { counter-increment: f; content: counter(f); font: 700 12px var(--mono); color: var(--gold); padding-top: 2px; }
+@media (prefers-reduced-motion: reduce) { .pulse, .banner.show { animation: none; } .banner.show { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="marquee">
+    <div>
+      <h1 class="logo">Infinite Zone</h1>
+      <p class="tag">S3K-style physics. Acts generated forever from a seed. Mods lock on like cartridges.</p>
+    </div>
+    <div class="seedbox">
+      <label for="seed">Seed</label>
+      <input type="text" id="seed" spellcheck="false" autocomplete="off" aria-label="Level seed">
+      <button id="reseed" type="button">New seed</button>
+      <button id="mute" type="button" aria-pressed="false">Sound</button>
+    </div>
+  </header>
+
+  <section class="stage" id="stage">
+    <canvas id="screen" width="400" height="224" aria-label="Game screen"></canvas>
+    <div class="hud" id="hud" hidden>
+      <dl>
+        <dt>Score</dt><dd id="hud-score">0</dd>
+        <dt>Time</dt><dd id="hud-time">0:00</dd>
+        <div id="hud-ringbox" style="display:contents"><dt>Rings</dt><dd id="hud-rings">0</dd></div>
+      </dl>
+      <div class="right">
+        <b id="hud-dist">0 m</b>
+        <small id="hud-zone"></small>
+        <small id="hud-lives">Lives 3</small>
+      </div>
+    </div>
+    <div class="banner" id="banner"></div>
+    <pre class="debug" id="debug" hidden></pre>
+
+    <div class="overlay" id="title">
+      <div class="card">
+        <h2>Infinite Zone</h2>
+        <p>Every act is generated from the seed. Same seed, same world.</p>
+        <button class="go" id="start" type="button">Start run</button>
+        <p class="pulse">or press jump</p>
+      </div>
+    </div>
+
+    <div class="overlay" id="paused" hidden>
+      <div class="card">
+        <h2>Paused</h2>
+        <button class="go" id="resume" type="button">Resume</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="over" hidden>
+      <div class="card">
+        <h2>Game Over</h2>
+        <dl class="stats">
+          <dt>Distance</dt><dd id="over-dist">0 m</dd>
+          <dt>Score</dt><dd id="over-score">0</dd>
+          <dt>Time</dt><dd id="over-time">0:00</dd>
+          <dt>Best on seed</dt><dd id="over-best">0 m</dd>
+          <dt>Seed</dt><dd id="over-seed"></dd>
+        </dl>
+        <div class="row">
+          <button class="go" id="again" type="button">Run it back</button>
+          <button id="fresh" type="button">New seed</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="pad" id="touch" aria-hidden="true">
+    <div class="dirs">
+      <button type="button" data-key="left" tabindex="-1">◀</button>
+      <button type="button" data-key="down" tabindex="-1">▼</button>
+      <button type="button" data-key="right" tabindex="-1">▶</button>
+    </div>
+    <button type="button" class="jump" data-key="jump" tabindex="-1">Jump</button>
+  </div>
+
+  <section class="deck">
+    <div class="panel">
+      <h3>Lock-on slots</h3>
+      <p>Each cartridge locks onto the base ROM. Swapping one power-cycles the run.</p>
+      <div id="carts"></div>
+    </div>
+    <div class="panel">
+      <h3>Controls</h3>
+      <dl class="keys">
+        <dt>← →</dt><dd>Run (also A / D, d-pad)</dd>
+        <dt>Z X Space</dt><dd>Jump, hold for height</dd>
+        <dt>↓</dt><dd>Roll while moving</dd>
+        <dt>↓ + jump</dt><dd>Spindash: tap to rev, release ↓</dd>
+        <dt>P</dt><dd>Pause</dd>
+        <dt>G</dt><dd>Show sensors, layers, segments</dd>
+        <dt>R</dt><dd>Restart on this seed</dd>
+      </dl>
+    </div>
+    <div class="panel">
+      <h3>How an act is made</h3>
+      <ol class="flow">
+        <li>The seed and a segment index pick one production from the grammar.</li>
+        <li>The production writes terrain into 128×128 chunks with two collision layers, so loops work.</li>
+        <li>Gaps and platforms are spaced from the physics table, so mods that change gravity stay fair.</li>
+        <li>A reference bot plays 100 seeds per test run. Any production it can't clear fails the build.</li>
+      </ol>
+    </div>
+  </section>
+</main>
+<script type="module" src="src/shell/main.js"></script>
+</body>
+</html>

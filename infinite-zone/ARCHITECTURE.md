@@ -1,0 +1,63 @@
+---
+tags: [infinite-zone, architecture, procedural-generation, game-physics]
+---
+
+# Architecture
+
+## The model in one line
+
+**Seed → grammar → bitmap → sensors → state.** A seeded sampler picks productions from a grammar; productions paint a two-layer collision bitmap; a sensor-based state machine reads the bitmap; a bot closes the loop by testing whether the grammar's output can be played.
+
+```mermaid
+flowchart LR
+  seed[seed + segment i] --> rng[rng mix]
+  rng --> choose[choose production]
+  carts[(carts: segments, objects, zones, physics, hooks)] --> choose
+  choose --> builder[Builder ops]
+  builder --> world[(World: chunked 2-layer bitmap)]
+  builder --> objects[(Objects)]
+  world --> sensors[Player sensors]
+  sensors --> state[ground speed, angle, mode]
+  state --> bot[reference bot]
+  bot -->|traversal eval| choose
+```
+
+## Analogies that carry weight
+
+| Here | S3K hardware | Why it matters |
+|---|---|---|
+| `createCore()` | the console | Deterministic, headless, knows no content |
+| `base` cart | the Sonic & Knuckles cartridge | Ships the content, uses the public API |
+| `lockOn(cart)` | the lock-on slot | Mods compose; same id overrides |
+| 128×128 chunks of 16×16 blocks | S3K level layout | Same granularity as the original data |
+| Layer A / B + swappers | S3K "paths" + plane switchers | How a 2D bitmap holds a loop you enter and exit |
+| Bot eval | playtesting | Rejection criterion for the grammar |
+
+## Core
+
+- **World** (`world.js`). One byte per pixel: solid-on-A, solid-on-B, top-only, material. Unbounded in x, 2048 px tall, pruned behind the player. `cast()` is the only collision primitive: a ray of up to 32 px that returns signed distance to a surface. `angleAt()` fits a chord through probes either side of a hit and rejects jumps of more than 10 px as ledges, so ledges read flat and curves read curved.
+- **Player** (`player.js`). Ground speed `gsp` runs along the surface. The angle picks one of four modes (floor, right wall, ceiling, left wall), and the same sensor code rotates through all four. That's why loops need no special-case code. Push sensors rotate too, and the surface turning more than 50° is what counts as a wall, so a loop's quarter-pipe is a slope while a cliff is a wall.
+- **Generator** (`generator.js`). A segment is a production `(entry height, difficulty, rng) → (terrain, objects, exit height)`. Segment 0 is `start`; every 10th is `checkpoint`; the rest are weighted by difficulty `d = 1 − e^(−i/40)`, never repeating the same id twice in a row.
+- **Core** (`core.js`). Rings, lives, checkpoints, pit deaths, zones, hooks. Events per frame (`ring`, `jump`, `spring`, …) are the only channel to the shell.
+
+## Invariants (the eval enforces them)
+
+1. Determinism: same seed and carts, same world, same bot run.
+2. Every uphill ≤ ~20°, the grade where slope factor (0.125·sin θ) drops under acceleration (0.046875). A stopped player can always walk out.
+3. Standing still on a floor-mode slope is stable (S2/S3K rule), so a stuck player can crouch and spindash.
+4. Every pit gets ≥ 288 px of runway. Platform gaps plus platform length ≥ the full-speed jump range, so a committed jump lands.
+5. Loops fill their lower outside down to the floor. No acute overhang exists for a player to run into from the convex side.
+
+Each invariant came from a failure the bot found. That's the loop: **add a production → run `npm test` → read the per-segment deaths/stalls table → fix geometry or the invariant.**
+
+## Shell
+
+Renderer paints each chunk once into a cached canvas: color comes from the zone palette and each pixel's depth below the surface (grass band → dark line → strata). Parallax strips are generated per zone. Camera has S3K-like caps (16 px/frame) plus a speed-scaled look-ahead.
+
+## Where to take it next
+
+- **Branching routes.** Multi-path segments (upper/lower) with their own exit heights that rejoin. `skyways` is the first step.
+- **Online validation.** Simulate the bot through a candidate segment before committing it (rejection sampling with the real physics as the oracle) instead of relying on offline eval alone.
+- **More characters.** `glide` shows abilities as hooks. Climbing (wall-mode grab) is the next hook.
+- **ROM adapter.** A loader that reads chunk and collision data from a user-supplied S3K ROM (offsets per the skdisasm disassembly) into the same `World`, so authored acts and generated acts share one engine. Never distribute the ROM.
+- **Learned productions.** Fit segment weights to player telemetry (deaths, speed, ring pickups) per seed. The grammar is the action space.
