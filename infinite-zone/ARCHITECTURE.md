@@ -55,6 +55,12 @@ Invariants 1–5 came from failures the expert bot found. 6–8 came from the re
 
 The loop: **add a production → `npm test` → read the per-segment tables → fix geometry or add an invariant.**
 
+## Biomes
+
+A zone is a genome sampled once from (seed, zone index): identity (name, mood, palette, ground pattern, skyline) and structure (production weights, height and length scales, loop bias). Weights multiply the base grammar's weights, so a zone *leans*: a loop zone, a platform zone, a hill zone. The speed budget and catch floors run beneath every genome, so variety never buys back traps. The fairness and traversal tests sample hundreds of zones per run.
+
+Palettes are built in HSL from the mood: sky hue first, grass hue kept at least 40° away from it, soil warm or complementary, everything darker at dusk and night. A quarter of the time a hand-made palette comes round instead.
+
 ## Shell
 
 Renderer paints each chunk once into a cached canvas: color comes from the zone palette and each pixel's depth below the surface (grass band → dark line → strata). Parallax strips are generated per zone. The camera lives in the core (`camera.js`) so the fairness test sees exactly what the screen shows: S3K-like caps (16 px/frame) plus look-ahead up to 136 px at speed.

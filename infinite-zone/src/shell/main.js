@@ -6,7 +6,8 @@ import { createBot } from '../content/bot.js';
 import { Renderer } from './render.js';
 import { Input } from './input.js';
 import { Sfx } from './audio.js';
-import { SpriteSkin, loadImage, PRESETS } from './skin.js';
+import { SpriteSkin, loadImage } from './skin.js';
+import { PRESETS } from './presets.js';
 import { moon } from '../../mods/moon.js';
 import { skyways } from '../../mods/skyways.js';
 import { glide } from '../../mods/glide.js';
@@ -230,9 +231,12 @@ async function restoreSkin() {
   const saved = store.get('iz.skin', null);
   try {
     if (saved) return await applySkin(saved.src, saved.atlas, false);
-    // Local development: drop sheet.png + skin.json into skins/local/.
+    // Local development: drop a sheet and skin.json into skins/local/.
     const res = await fetch('skins/local/skin.json');
-    if (res.ok) await applySkin('skins/local/sheet.png', await res.json(), false);
+    if (res.ok) {
+      const atlas = await res.json();
+      await applySkin(`skins/local/${atlas.image ?? 'sheet.png'}`, atlas, false);
+    }
   } catch { /* no saved or local skin */ }
 }
 

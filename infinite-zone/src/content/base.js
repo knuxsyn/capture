@@ -67,7 +67,7 @@ export const segments = [
   {
     id: 'runway', weight: 0.8,
     build(b) {
-      const x = b.cx, y = b.cy, len = b.rng.int(14, 28) * S;
+      const x = b.cx, y = b.cy, len = Math.round(b.rng.int(14, 28) * S * b.zone.stretch);
       b.flat(len);
       if (b.rng.chance(0.7)) b.ringLine(x + 64, y - 28, x + len - 64, y - 28, b.rng.int(3, 7));
     },
@@ -75,7 +75,8 @@ export const segments = [
   {
     id: 'hills', weight: 1.2,
     build(b) {
-      const n = b.rng.int(1, 3), wave = b.rng.int(20, 30) * S, amp = b.rng.int(2, 4) * S;
+      const n = b.rng.int(1, 3), wave = Math.round(b.rng.int(20, 30) * S * b.zone.stretch);
+      const amp = Math.round(b.rng.int(2, 4) * S * b.zone.amp);
       const x = b.cx, y = b.cy;
       b.hills(n * wave, amp, n);
       for (let k = 0; k < n; k++) {
@@ -86,7 +87,7 @@ export const segments = [
   {
     id: 'slope', weight: 1,
     build(b) {
-      const dy = b.room(b.rng.sign() * b.rng.int(4, 12) * S);
+      const dy = b.room(Math.round(b.rng.sign() * b.rng.int(4, 12) * S * b.zone.amp));
       b.slope(Math.max(16 * S, Math.abs(dy) * (dy < 0 ? UPHILL : 2.2)), dy);
       b.flat(4 * S);
     },
@@ -94,7 +95,7 @@ export const segments = [
   {
     id: 'drop', weight: 0.6, minD: 0.1,
     build(b) {
-      const dy = b.room(b.rng.int(12, 22) * S);
+      const dy = b.room(Math.round(b.rng.int(12, 22) * S * b.zone.amp));
       const len = Math.abs(dy) * (dy < 0 ? UPHILL : b.rng.range(1.6, 2.2));
       const x = b.cx, y = b.cy;
       b.slope(len, dy);
@@ -109,7 +110,7 @@ export const segments = [
       if (lead > 0) b.slope(lead * 2.4, lead);
       else b.flat(12 * S);
       b.flat(6 * S);
-      const r = b.rng.int(5, 7) * S;
+      const r = Math.max(5, Math.min(8, b.rng.int(5, 7) + b.zone.loopBias)) * S;
       const { cx, cy } = b.loop(r);
       b.ringArc(cx, cy, r - 26, Math.PI * 0.15, Math.PI * 0.85, 7);
       b.flat(6 * S);
@@ -190,7 +191,7 @@ export const segments = [
   {
     id: 'halfpipe', weight: 0.6, minD: 0.05,
     build(b) {
-      const depth = Math.min(b.rng.int(5, 10) * S, WORLD.Y_BOT - b.cy);
+      const depth = Math.min(Math.round(b.rng.int(5, 10) * S * b.zone.amp), WORLD.Y_BOT - b.cy);
       b.flat(4 * S);
       if (depth >= 3 * S) b.dip(Math.max(depth * 5.5, 20 * S), depth);
       b.flat(6 * S);
@@ -417,7 +418,8 @@ export const objects = {
 };
 
 // ------------------------------------------------------------------ zones
-// Palettes cycle every ZONE_LEN segments. All hex, all original.
+// Hand-made palettes. zoneGen below mixes them in now and then; carts can
+// add more through `zones`. All hex, all original.
 
 export const zones = [
   {
@@ -446,12 +448,100 @@ export const zones = [
   },
 ];
 
+// ------------------------------------------------------------- biomes
+// Every zone is generated from (seed, zone index): a name, a time of day,
+// a palette, a ground pattern, a skyline, and a production mix that leans
+// on one or two signature sections. Acts 1 and 2 of a zone share it.
+
+const ADJ = ['Prism', 'Ember', 'Tidal', 'Static', 'Marble', 'Cinder', 'Aurora', 'Moss', 'Quartz', 'Sunset',
+  'Thunder', 'Velvet', 'Copper', 'Lunar', 'Coral', 'Saffron', 'Glass', 'Iron', 'Nectar', 'Signal', 'Jade',
+  'Rust', 'Pollen', 'Basalt', 'Chrome', 'Orchid', 'Cobalt', 'Tundra', 'Mirage', 'Clover'];
+const LAND = ['Ridge', 'Hollow', 'Spire', 'Garden', 'Cascade', 'Canyon', 'Heights', 'Reef', 'Grove', 'Mesa',
+  'Terrace', 'Falls', 'Dunes', 'Gorge', 'Bluffs', 'Basin', 'Shoals', 'Steppe', 'Crag', 'Vale', 'Causeway', 'Atoll'];
+const MOODS = [['day', 3], ['dawn', 1], ['dusk', 2], ['night', 1.4], ['haze', 1]];
+const GRASS = [[90, 135, 5], [38, 55, 1.5], [160, 185, 1.2], [285, 330, 1], [8, 22, 1.3]];
+export const PATTERNS = ['strata', 'bricks', 'pebbles', 'diagonal', 'columns', 'waves'];
+export const SKYLINES = ['peaks', 'spires', 'mesas', 'rolling', 'canopy'];
+const SIGNATURE = ['loop', 'hills', 'drop', 'halfpipe', 'platforms', 'terraces', 'springboard', 'gap', 'crawlers'];
+
+function hsl(h, s, l) {
+  h = ((h % 360) + 360) % 360;
+  s /= 100; l = Math.max(0, Math.min(100, l)) / 100;
+  const k = (n) => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
+  const f = (n) => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1))));
+  return `#${[f(0), f(8), f(4)].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function weighted(rng, items) {
+  let r = rng.next() * items.reduce((t, it) => t + it[it.length - 1], 0);
+  for (const it of items) if ((r -= it[it.length - 1]) <= 0) return it;
+  return items[items.length - 1];
+}
+
+const gauss = (rng) => Math.sqrt(-2 * Math.log(1 - rng.next())) * Math.cos(TAU * rng.next());
+
+export function zoneGen(rng, index, { fixed = [], ids = [] } = {}) {
+  const mood = weighted(rng, MOODS)[0];
+  const dark = mood === 'night' ? 14 : mood === 'dusk' ? 6 : 0;
+  let skyH = mood === 'day' && rng.chance(0.75) ? rng.range(190, 225) : rng.range(0, 360);
+  if (mood === 'dawn') skyH = rng.range(250, 290);
+  if (mood === 'dusk') skyH = rng.range(260, 320);
+  if (mood === 'night') skyH = rng.range(215, 250);
+  const sky = {
+    day: [hsl(skyH, 62, 36), hsl(skyH - 8, 58, 74)],
+    dawn: [hsl(skyH, 40, 32), hsl(rng.range(18, 40), 85, 74)],
+    dusk: [hsl(skyH, 50, 16), hsl(rng.range(5, 30), 80, 62)],
+    night: [hsl(skyH, 60, 7), hsl(skyH - 10, 45, 24)],
+    haze: [hsl(skyH, 30, 58), hsl(skyH + 30, 35, 84)],
+  }[mood];
+  let g = rng.range(...weighted(rng, GRASS).slice(0, 2));
+  if (Math.abs(((g - skyH + 540) % 360) - 180) < 40) g += 120; // keep ground off the sky's hue
+  const soilH = rng.chance(0.65) ? rng.range(18, 36) : g + 180;
+  const soilS = rng.range(35, 55);
+  let palette = {
+    sky,
+    far: hsl(skyH + 10, 28, (mood === 'night' ? 18 : mood === 'dusk' ? 30 : 50)),
+    mid: hsl(g, 32, 38 - dark * 1.4),
+    cloud: { day: hsl(skyH, 40, 95), dawn: hsl(20, 80, 88), dusk: hsl(15, 70, 78), night: hsl(skyH, 30, 40), haze: hsl(skyH, 20, 96) }[mood],
+    grass: [hsl(g, 62, 66 - dark), hsl(g, 55, 48 - dark), hsl(g, 58, 32 - dark * 0.7)],
+    soil: [hsl(soilH, soilS, 52 - dark), hsl(soilH, soilS, 45 - dark), hsl(soilH, soilS, 38 - dark), hsl(soilH, soilS, 20 - dark * 0.5)],
+    rock: [hsl(skyH, 18, 70 - dark), hsl(skyH, 18, 56 - dark), hsl(skyH, 18, 42 - dark)],
+    wood: [hsl(rng.range(22, 38), 52, 72 - dark), hsl(30, 50, 54 - dark), hsl(28, 48, 34 - dark)],
+  };
+  let name = `${rng.pick(ADJ)} ${rng.pick(LAND)}`;
+  // Now and then a hand-made palette (or one a cart added) comes round.
+  if (fixed.length && rng.chance(0.25)) {
+    const f = rng.pick(fixed);
+    palette = { sky: f.sky, far: f.far, mid: f.mid, cloud: f.cloud, grass: f.grass, soil: f.soil, rock: f.rock, wood: f.wood };
+    name = f.name;
+  }
+
+  const weights = {};
+  for (const id of ids) weights[id] = Math.exp(gauss(rng) * 0.55);
+  for (let k = rng.int(1, 2); k > 0; k--) {
+    const sig = rng.pick(SIGNATURE);
+    if (sig in weights) weights[sig] *= 2.5;
+  }
+
+  return {
+    name, mood, ...palette,
+    stars: mood === 'night',
+    pattern: rng.pick(PATTERNS),
+    skyline: rng.pick(SKYLINES),
+    weights,
+    amp: rng.range(0.75, 1.35),
+    stretch: rng.range(0.85, 1.25),
+    loopBias: rng.int(-1, 1),
+  };
+}
+
 export const base = {
   id: 'base',
   name: 'Base Cartridge',
   segments,
   objects,
   zones,
+  zoneGen,
   hooks: {
     onLand(p) { p.ext.sprung = false; },
   },

@@ -75,8 +75,9 @@ function settle(core) {
 // convex outside must never carry the player into the floor.
 {
   const core = createCore({ seed: 1, carts: [base, fixture((b) => { b.flat(400); b.loop(96); b.flat(4096); })] }).start();
+  const yf = core.gen.segments[0].y0;
   core.player.x = 400 + 64 + 112 - 40;
-  core.player.y = 1024 - 2 * 96 - 16 - 60;
+  core.player.y = yf - 2 * 96 - 16 - 60;
   let worst = 0;
   for (let i = 0; i < 400; i++) {
     core.step({ right: true });
@@ -84,7 +85,7 @@ function settle(core) {
     if (core.world.get(Math.floor(p.x), Math.floor(p.y)) & (p.layer ? 2 : 1)) worst++;
   }
   const p = core.player;
-  check('loop crown: runs off the outside cleanly', worst === 0 && p.ground && p.y < 1024 && p.x > 800, `x=${p.x.toFixed(0)} y=${p.y.toFixed(0)} embedded=${worst}`);
+  check('loop crown: runs off the outside cleanly', worst === 0 && p.ground && p.y < yf && p.x > 800, `x=${p.x.toFixed(0)} y=${p.y.toFixed(0)} embedded=${worst}`);
 }
 
 // 4. Spindash from a standstill.

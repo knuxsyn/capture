@@ -11,7 +11,10 @@ body), orders them in reading order, and writes:
 Map animations to frame numbers in an atlas (see src/shell/skin.js):
   "anims": {"run": {"frames": [12, 13, 14, 15]}}
 
-usage: python3 tools/slice.py sheet.png [--key auto|#rrggbb] [--gap 2] [--min 10]
+usage: python3 tools/slice.py sheet.png [--key auto|#rrggbb[,#rrggbb...]] [--gap 2] [--min 10]
+
+Sheets with panels and cells have several background colors; list them
+all in --key and they are all keyed out.
 """
 import argparse
 import json
@@ -82,14 +85,18 @@ def main():
 
     img = Image.open(a.sheet).convert('RGBA')
     w, h = img.size
-    key = background(img) if a.key == 'auto' else tuple(int(a.key[i:i + 2], 16) for i in (1, 3, 5)) + (255,)
+    if a.key == 'auto':
+        keys = {background(img)[:3]}
+    else:
+        keys = {tuple(int(k.strip()[i:i + 2], 16) for i in (1, 3, 5)) for k in a.key.split(',')}
     px = list(img.get_flattened_data() if hasattr(img, 'get_flattened_data') else img.getdata())
-    mask = bytearray(1 if (p[3] > 0 and p[:3] != key[:3]) else 0 for p in px)
+    mask = bytearray(1 if (p[3] > 0 and p[:3] not in keys) else 0 for p in px)
     rects = [r for r in blobs(mask, w, h, a.gap) if r[2] >= a.min or r[3] >= a.min]
     rects = reading_order(rects)
 
     base = Path(a.sheet).with_suffix('')
-    hexkey = '#%02x%02x%02x' % key[:3]
+    hexkeys = ['#%02x%02x%02x' % k for k in sorted(keys)]
+    hexkey = hexkeys[0] if len(hexkeys) == 1 else hexkeys
     Path(f'{base}.frames.json').write_text(json.dumps({'key': hexkey, 'frames': rects}, separators=(',', ':')))
     prev = img.copy()
     d = ImageDraw.Draw(prev)

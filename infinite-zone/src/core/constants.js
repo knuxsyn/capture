@@ -40,4 +40,5 @@ export const WORLD = Object.freeze({
   PIT: 360,     // falling this far below a segment's lowest surface kills
 });
 
-export const ZONE_LEN = 16; // segments per zone before the palette rotates
+export const ACT_LEN = 16; // segments per act
+export const ACTS = 2;     // acts per zone; a zone keeps one biome

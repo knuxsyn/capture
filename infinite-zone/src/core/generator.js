@@ -2,7 +2,7 @@
 // maps (entry height, difficulty, rng) to terrain + objects + exit height.
 // Segments chain left to right forever; the world streams ahead of the
 // player and is pruned behind.
-import { WORLD, ZONE_LEN } from './constants.js';
+import { WORLD, ACT_LEN, ACTS } from './constants.js';
 import { createRng, mix } from './rng.js';
 import { MAT, BOTH, TOP, SOLID_A, SOLID_B, px } from './world.js';
 
@@ -17,7 +17,8 @@ export class Generator {
     this.world = core.world;
     this.objects = core.objects;
     this.x = 0;
-    this.y = 1024;
+    // Each seed starts at its own altitude in the play band.
+    this.y = WORLD.Y_TOP + 256 + (mix(core.seed, 0x51) % 41) * WORLD.BLOCK;
     this.i = 0;
     this.segments = [];
     this.last = null;
@@ -39,7 +40,8 @@ export class Generator {
     let total = 0;
     for (const s of reg.values()) {
       if (!s.weight || (s.minD ?? 0) > d || s.id === this.last || (calm && s.maxSpeed)) continue;
-      const wgt = typeof s.weight === 'function' ? s.weight(d) : s.weight;
+      const base = typeof s.weight === 'function' ? s.weight(d) : s.weight;
+      const wgt = base * (this.zone()?.weights?.[s.id] ?? 1);
       if (wgt <= 0) continue;
       pool.push([s, wgt]);
       total += wgt;
@@ -47,6 +49,10 @@ export class Generator {
     let r = rng.next() * total;
     for (const [s, wgt] of pool) if ((r -= wgt) <= 0) return s;
     return pool[pool.length - 1][0];
+  }
+
+  zone() {
+    return this.core.zoneInfo(Math.floor(this.i / (ACT_LEN * ACTS)));
   }
 
   next() {
@@ -63,7 +69,7 @@ export class Generator {
     const b = new Builder(this, rng, d);
     prod.build(b);
     const seg = {
-      id: prod.id, i: this.i, zone: Math.floor(this.i / ZONE_LEN),
+      id: prod.id, i: this.i, act: Math.floor(this.i / ACT_LEN), zone: Math.floor(this.i / (ACT_LEN * ACTS)),
       x0: this.x, x1: b.cx, y0: this.y, y1: b.cy, yLow: b.yLow, yHigh: b.yHigh,
       vIn: this.v, vOut: b.v,
     };
@@ -108,6 +114,10 @@ export class Builder {
     this.mat = MAT.GROUND;
     this.P = gen.core.registry.physics;
     this.v = gen.v;
+    // Zone flavor: amp scales heights, stretch scales lengths, loopBias
+    // nudges loop size in blocks. Productions opt in.
+    const z = gen.zone() ?? {};
+    this.zone = { amp: z.amp ?? 1, stretch: z.stretch ?? 1, loopBias: z.loopBias ?? 0 };
   }
 
   // Integrate the expected speed of a player holding right across one

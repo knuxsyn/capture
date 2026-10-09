@@ -5,6 +5,7 @@ import { WORLD } from '../core/constants.js';
 import { CHUNK_ROWS, MAT, DOWN, ALONG } from '../core/world.js';
 import { modeOf } from '../core/player.js';
 import { Camera, VIEW_W, VIEW_H } from '../core/camera.js';
+import { createRng, mix } from '../core/rng.js';
 
 const C = WORLD.CHUNK;
 const TAU = Math.PI * 2;
@@ -17,6 +18,7 @@ const rgb = (h) => {
 function compile(z) {
   return {
     grass: z.grass.map(rgb), soil: z.soil.map(rgb), rock: z.rock.map(rgb), wood: z.wood.map(rgb),
+    pattern: z.pattern ?? 'strata',
   };
 }
 
@@ -26,6 +28,24 @@ function hash(x, y) {
   return (h ^ (h >>> 16)) >>> 0;
 }
 
+// Which of the soil tones (0-2 body, 3 dark) a pixel takes under a pattern.
+function soilTone(pattern, wx, wy, wob) {
+  switch (pattern) {
+    case 'bricks': {
+      const sx = wx + ((wy >> 3) & 1) * 8;
+      return (wy & 7) === 0 || (sx & 15) === 0 ? 3 : (sx >> 4) & 1;
+    }
+    case 'pebbles': {
+      const h = hash(wx >> 2, wy >> 2) % 13;
+      return h === 0 ? 0 : h === 1 ? 2 : h === 2 ? 3 : 1;
+    }
+    case 'diagonal': return ((wx + wy) >> 4) % 3;
+    case 'columns': return ((wx + (wob >> 1)) >> 3) % 3;
+    case 'waves': return (((wy + Math.round(Math.sin(wx * 0.07 + (wy >> 4)) * 3)) >> 3) % 3 + 3) % 3;
+    default: return (hash(wx, wy) & 127) === 0 ? 3 : ((wy + wob) >> 3) % 3;
+  }
+}
+
 function makeCanvas(w, h) {
   const c = document.createElement('canvas');
   c.width = w;
@@ -33,49 +53,87 @@ function makeCanvas(w, h) {
   return c;
 }
 
-// Parallax strips, generated once per zone. Tiles every 512 px.
-function backdrop(z, i) {
-  const W = 512;
-  const far = makeCanvas(W, 140), mid = makeCanvas(W, 100), sky = makeCanvas(W, 80);
+// Parallax strips, generated once per zone and tiling every 512 px. The
+// skyline style and its random features come from the zone's own rng.
+const BW = 512;
+
+function silhouette(g, H, top) {
+  g.beginPath();
+  g.moveTo(0, H);
+  for (let x = 0; x <= BW; x += 2) g.lineTo(x, top(x));
+  g.lineTo(BW, H);
+  g.fill();
+}
+
+// Draw a feature three times (x - BW, x, x + BW) so the strip wraps.
+function wrapped(fn) {
+  for (const o of [-BW, 0, BW]) fn(o);
+}
+
+function backdrop(z, rng) {
+  const far = makeCanvas(BW, 140), mid = makeCanvas(BW, 100), sky = makeCanvas(BW, 80), stars = makeCanvas(BW, 140);
+  const ph = rng.range(0, TAU), ph2 = rng.range(0, TAU);
+  const wave = (x, f, p) => Math.sin((x / BW) * TAU * f + p);
   let g = far.getContext('2d');
   g.fillStyle = z.far;
-  g.beginPath();
-  g.moveTo(0, 140);
-  for (let x = 0; x <= W; x += 4) {
-    const t = (x / W) * TAU;
-    const y = 70 - 34 * Math.sin(t * 2 + i) - 18 * Math.sin(t * 5 + i * 3) - 8 * Math.sin(t * 11);
-    g.lineTo(x, y);
+  const style = z.skyline ?? 'peaks';
+  if (style === 'spires') {
+    for (let k = 0; k < 14; k++) {
+      const x = rng.range(0, BW), w = rng.range(10, 26), h = rng.range(50, 125);
+      wrapped((o) => { g.beginPath(); g.moveTo(x + o - w, 140); g.lineTo(x + o, 140 - h); g.lineTo(x + o + w, 140); g.fill(); });
+    }
+    g.fillRect(0, 120, BW, 20);
+  } else if (style === 'mesas') {
+    for (let k = 0; k < 6; k++) {
+      const x = rng.range(0, BW), w = rng.range(50, 120), h = rng.range(40, 92);
+      wrapped((o) => {
+        g.beginPath();
+        g.moveTo(x + o - w / 2 - 12, 140); g.lineTo(x + o - w / 2, 140 - h);
+        g.lineTo(x + o + w / 2, 140 - h); g.lineTo(x + o + w / 2 + 12, 140); g.fill();
+      });
+    }
+    g.fillRect(0, 118, BW, 22);
+  } else if (style === 'rolling') {
+    silhouette(g, 140, (x) => 92 - 18 * wave(x, 2, ph) - 9 * wave(x, 3, ph2));
+  } else {
+    silhouette(g, 140, (x) => 70 - 34 * wave(x, 2, ph) - 18 * wave(x, 5, ph2) - 8 * wave(x, 11, ph));
   }
-  g.lineTo(W, 140);
-  g.fill();
+
   g = mid.getContext('2d');
   g.fillStyle = z.mid;
-  g.beginPath();
-  g.moveTo(0, 100);
-  for (let x = 0; x <= W; x += 4) {
-    const t = (x / W) * TAU;
-    g.lineTo(x, 46 - 18 * Math.sin(t * 3 + i * 2) - 10 * Math.sin(t * 7 + 1));
+  const ridge = (x) => 46 - 18 * wave(x, 3, ph2) - 10 * wave(x, 7, ph);
+  if (style === 'canopy') {
+    for (let k = 0; k < 26; k++) {
+      const x = rng.range(0, BW), r = rng.range(9, 18), y = rng.range(30, 52);
+      wrapped((o) => { g.beginPath(); g.arc(x + o, y, r, 0, TAU); g.fill(); g.fillRect(x + o - r, y, 2 * r, 100 - y); });
+    }
+  } else {
+    silhouette(g, 100, ridge);
+    g.globalAlpha = 0.18;
+    g.fillStyle = '#ffffff';
+    for (let x = 0; x < BW; x += 4) g.fillRect(x, ridge(x), 4, 2);
+    g.globalAlpha = 1;
   }
-  g.lineTo(W, 100);
-  g.fill();
-  g.globalAlpha = 0.18;
-  g.fillStyle = '#ffffff';
-  for (let x = 0; x < W; x += 4) {
-    const t = (x / W) * TAU;
-    g.fillRect(x, 46 - 18 * Math.sin(t * 3 + i * 2) - 10 * Math.sin(t * 7 + 1), 4, 2);
-  }
+
   g = sky.getContext('2d');
   g.fillStyle = z.cloud;
-  for (let k = 0; k < 7; k++) {
-    const cx = (k * 83 + i * 37) % W, cy = 18 + ((k * 29) % 44), r = 10 + ((k * 13) % 12);
-    g.globalAlpha = 0.55;
+  const clouds = z.stars ? 3 : rng.int(3, 9);
+  for (let k = 0; k < clouds; k++) {
+    const cx = rng.range(0, BW), cy = rng.range(14, 60), r = rng.range(8, 22);
+    g.globalAlpha = z.stars ? 0.25 : 0.55;
     for (let j = 0; j < 4; j++) {
-      g.beginPath();
-      g.ellipse(cx + j * r * 0.8, cy + (j % 2) * 3, r, r * 0.55, 0, 0, TAU);
-      g.fill();
+      wrapped((o) => { g.beginPath(); g.ellipse(cx + o + j * r * 0.8, cy + (j % 2) * 3, r, r * 0.55, 0, 0, TAU); g.fill(); });
     }
   }
-  return { far, mid, sky };
+  if (z.stars) {
+    g = stars.getContext('2d');
+    for (let k = 0; k < 90; k++) {
+      g.fillStyle = rng.chance(0.2) ? '#ffe9b0' : '#ffffff';
+      g.globalAlpha = rng.range(0.4, 1);
+      g.fillRect(Math.floor(rng.range(0, BW)), Math.floor(rng.range(0, 130)), 1, 1);
+    }
+  }
+  return { far, mid, sky, stars: z.stars ? stars : null };
 }
 
 export class Renderer {
@@ -100,6 +158,8 @@ export class Renderer {
   attach(core) {
     this.core = core;
     this.cache.clear();
+    this.pals.clear();
+    this.backs.clear();
     this.zi = undefined;
     this.fade = 0;
     this.snap();
@@ -114,17 +174,13 @@ export class Renderer {
   }
 
   pal(zi) {
-    const zones = this.core.registry.zones;
-    const k = zi % zones.length;
-    if (!this.pals.has(k)) this.pals.set(k, compile(zones[k]));
-    return this.pals.get(k);
+    if (!this.pals.has(zi)) this.pals.set(zi, compile(this.core.zoneInfo(zi)));
+    return this.pals.get(zi);
   }
 
   back(zi) {
-    const zones = this.core.registry.zones;
-    const k = zi % zones.length;
-    if (!this.backs.has(k)) this.backs.set(k, backdrop(zones[k], k));
-    return this.backs.get(k);
+    if (!this.backs.has(zi)) this.backs.set(zi, backdrop(this.core.zoneInfo(zi), createRng(mix(this.core.seed ^ 0xbac4, zi))));
+    return this.backs.get(zi);
   }
 
   chunkCanvas(k) {
@@ -159,8 +215,7 @@ export class Renderer {
         else if (d < 5) c = P.grass[1];
         else if (d < 7 + (hash(wx, 7) & 1)) c = P.grass[2];
         else if (d < 9) c = P.soil[3];
-        else if ((hash(wx, wy) & 127) === 0) c = P.soil[3];
-        else c = P.soil[((wy + wob) >> 3) % 3];
+        else c = P.soil[soilTone(P.pattern, wx, wy, wob)];
         out[(y << 7) | x] = c;
       }
     }
@@ -173,16 +228,15 @@ export class Renderer {
     const core = this.core, ctx = this.ctx, world = core.world;
     const camX = Math.round(this.cam.x), camY = Math.round(this.cam.y);
     const zi = core.gen.at(camX + VIEW_W / 2).zone;
-    const zones = core.registry.zones, n = zones.length;
     if (this.zi === undefined) this.zi = zi;
     if (zi !== this.zi) {
       this.fromZi = this.zi;
       this.zi = zi;
       this.fade = 1;
     }
-    this.sky(zones[zi % n], zi, camX, camY, 1);
+    this.sky(core.zoneInfo(zi), zi, camX, camY, 1);
     if (this.fade > 0) {
-      this.sky(zones[this.fromZi % n], this.fromZi, camX, camY, this.fade);
+      this.sky(core.zoneInfo(this.fromZi), this.fromZi, camX, camY, this.fade);
       this.fade = Math.max(0, this.fade - 1 / 60);
     }
 
@@ -202,6 +256,9 @@ export class Renderer {
     ctx.save();
     ctx.translate(-camX, -camY);
     const types = core.registry.types;
+    if (frame % 600 === 0) {
+      for (const k of this.pals.keys()) if (k < zi - 1) { this.pals.delete(k); this.backs.delete(k); }
+    }
     for (const o of core.objects.near(camX - 48, camX + VIEW_W + 48)) {
       if (o.y < camY - 64 || o.y > camY + VIEW_H + 64) continue;
       types.get(o.type).draw?.(ctx, o, frame);
@@ -224,6 +281,7 @@ export class Renderer {
       const off = -(((camX * f) % 512) + 512) % 512;
       for (let x = off; x < VIEW_W; x += 512) ctx.drawImage(cv, Math.round(x), Math.round(y));
     };
+    if (b.stars) strip(b.stars, 0.02, 0);
     strip(b.sky, 0.04, 6 - lift * 0.3);
     strip(b.far, 0.12, VIEW_H - 150 - lift);
     strip(b.mid, 0.28, VIEW_H - 84 - lift * 1.6);
@@ -231,9 +289,9 @@ export class Renderer {
   }
 
   player(ctx, p, frame) {
-    for (const f of this.core.registry.hooks.drawPlayer) if (f(ctx, p, frame)) return;
     if (p.invuln > 0 && !p.hurt && (frame >> 2) & 1) return;
     if (this.skin?.draw(ctx, p)) return;
+    for (const f of this.core.registry.hooks.drawPlayer) if (f(ctx, p, frame)) return;
     const x = Math.round(p.x), y = Math.round(p.y);
     ctx.save();
     ctx.translate(x, y);
@@ -392,6 +450,6 @@ export class Renderer {
   debugText() {
     const p = this.core.player, s = this.core.gen.at(p.x);
     const deg = Math.round((p.angle * 180) / Math.PI);
-    return `x ${p.x.toFixed(1)}  y ${p.y.toFixed(1)}\ngsp ${p.gsp.toFixed(3)}  xsp ${p.xsp.toFixed(2)}  ysp ${p.ysp.toFixed(2)}\nangle ${deg}°  mode ${['floor', 'r-wall', 'ceiling', 'l-wall'][p.mode]}  layer ${'AB'[p.layer]}\n#${s.i} ${s.id}  zone ${s.zone}`;
+    return `x ${p.x.toFixed(1)}  y ${p.y.toFixed(1)}\ngsp ${p.gsp.toFixed(3)}  xsp ${p.xsp.toFixed(2)}  ysp ${p.ysp.toFixed(2)}\nangle ${deg}°  mode ${['floor', 'r-wall', 'ceiling', 'l-wall'][p.mode]}  layer ${'AB'[p.layer]}\n#${s.i} ${s.id}  zone ${s.zone} act ${s.act + 1}  v ${s.vIn.toFixed(1)}`;
   }
 }

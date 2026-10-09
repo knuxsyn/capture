@@ -1,7 +1,7 @@
 // The core: a headless, deterministic simulation. No DOM. One call to
 // step(input) advances one 60 Hz frame. Content arrives through lockOn().
-import { PHYSICS, WORLD } from './constants.js';
-import { hashSeed } from './rng.js';
+import { PHYSICS, WORLD, ACTS } from './constants.js';
+import { hashSeed, createRng, mix } from './rng.js';
 import { World } from './world.js';
 import { Player } from './player.js';
 import { Objects, swapType } from './objects.js';
@@ -14,6 +14,7 @@ export function createCore({ seed = 'zone', carts = [] } = {}) {
     segments: new Map(),
     types: new Map([['swap', swapType]]),
     zones: [],
+    zoneGen: null,
     physics: { ...PHYSICS },
     hooks: Object.fromEntries(HOOKS.map((h) => [h, []])),
     carts: [],
@@ -21,6 +22,7 @@ export function createCore({ seed = 'zone', carts = [] } = {}) {
 
   let gen = null;
   let prevJump = false;
+  const zoneCache = new Map();
 
   const core = {
     seed: typeof seed === 'number' ? seed >>> 0 : hashSeed(seed),
@@ -32,7 +34,7 @@ export function createCore({ seed = 'zone', carts = [] } = {}) {
     score: 0,
     lives: 3,
     distance: 0,
-    zoneIndex: 0,
+    actIndex: 0,
     state: 'boot',
     events: [],
     checkpoint: null,
@@ -43,7 +45,7 @@ export function createCore({ seed = 'zone', carts = [] } = {}) {
     gen: null,
 
     // A cartridge is a plain object; every field is optional.
-    //   { id, name, physics, segments, objects, zones, hooks, install(core) }
+    //   { id, name, physics, segments, objects, zones, zoneGen, hooks, install(core) }
     // Segments with an existing id replace it, so carts can override base content.
     lockOn(cart) {
       if (registry.carts.some((c) => c.id === cart.id)) return core;
@@ -52,6 +54,7 @@ export function createCore({ seed = 'zone', carts = [] } = {}) {
       for (const s of cart.segments ?? []) registry.segments.set(s.id, s);
       for (const [k, t] of Object.entries(cart.objects ?? {})) registry.types.set(k, t);
       if (cart.zones) registry.zones.push(...cart.zones);
+      if (cart.zoneGen) registry.zoneGen = cart.zoneGen;
       for (const h of HOOKS) if (cart.hooks?.[h]) registry.hooks[h].push(cart.hooks[h]);
       cart.install?.(core);
       return core;
@@ -96,8 +99,8 @@ export function createCore({ seed = 'zone', carts = [] } = {}) {
         const seg = gen.at(p.x);
         if (p.y > seg.yLow + WORLD.PIT || p.y > WORLD.H) core.kill(true);
         if (p.x > core.distance) core.distance = p.x;
-        if (seg.zone !== core.zoneIndex) {
-          core.zoneIndex = seg.zone;
+        if (seg.act !== core.actIndex) {
+          core.actIndex = seg.act;
           ev.push('zone');
         }
       } else if (++core.deadT > 90) {
@@ -157,18 +160,29 @@ export function createCore({ seed = 'zone', carts = [] } = {}) {
       core.events.push('die');
     },
 
+    // Zone z's identity: palette, patterns, production mix. Generated from
+    // (seed, z) by the cart's zoneGen, or cycled from fixed `zones`.
+    zoneInfo(z) {
+      if (!zoneCache.has(z)) {
+        const fixed = registry.zones;
+        const info = registry.zoneGen
+          ? registry.zoneGen(createRng(mix(core.seed ^ 0x2f6e, z)), z, { fixed, ids: [...registry.segments.keys()] })
+          : fixed.length ? fixed[z % fixed.length] : null;
+        zoneCache.set(z, info);
+      }
+      return zoneCache.get(z);
+    },
+
     zone() {
-      const z = registry.zones;
-      return z.length ? z[core.zoneIndex % z.length] : null;
+      return core.zoneInfo(Math.floor(core.actIndex / ACTS));
     },
 
     act() {
-      return Math.floor(core.zoneIndex / Math.max(1, registry.zones.length)) + 1;
+      return (core.actIndex % ACTS) + 1;
     },
 
     zoneAt(x) {
-      const z = registry.zones;
-      return z.length ? z[gen.at(x).zone % z.length] : null;
+      return core.zoneInfo(gen.at(x).zone);
     },
   };
 

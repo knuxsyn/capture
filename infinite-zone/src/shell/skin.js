@@ -3,7 +3,7 @@
 // mirrors them. Atlas format:
 //   {
 //     "name": "My runner",
-//     "key": "auto" | "#rrggbb",          // background color to make transparent
+//     "key": "auto" | "#rrggbb" | ["#rrggbb", ...], // background colors to clear
 //     "anims": {
 //       "idle": { "frames": [[x, y, w, h], ...], "fps": 6, "pivot": "feet" },
 //       "roll": { "frames": [[x, y, w, h, ox, oy], ...], "pivot": "center" },
@@ -16,17 +16,18 @@
 // player; "center" centers it on the player. ox/oy override the pivot
 // point within a frame. Missing animations fall back along FALLBACK.
 
-export const ANIMS = ['idle', 'walk', 'run', 'dash', 'roll', 'spindash', 'skid', 'push', 'crouch', 'spring', 'fall', 'hurt', 'die'];
+export const ANIMS = ['idle', 'walk', 'run', 'dash', 'roll', 'spindash', 'skid', 'push', 'crouch', 'spring', 'fall', 'glide', 'hurt', 'die'];
 
 const FALLBACK = {
   dash: 'run', run: 'walk', walk: 'idle', fall: 'walk', spring: 'fall', skid: 'walk',
-  push: 'walk', crouch: 'idle', spindash: 'roll', hurt: 'fall', die: 'hurt', roll: 'idle',
+  push: 'walk', crouch: 'idle', spindash: 'roll', hurt: 'fall', die: 'hurt', roll: 'idle', glide: 'fall',
 };
 
 // Which animation a player state shows, S3K-style.
 export function animOf(p) {
   if (p.dead) return 'die';
   if (p.hurt) return 'hurt';
+  if (p.ext.gliding) return 'glide';
   if (p.spindash) return 'spindash';
   if (p.curled) return 'roll';
   if (!p.ground) return p.ext.sprung ? 'spring' : 'fall';
@@ -57,14 +58,10 @@ function keyOut(img, key) {
   if (!key) return cv;
   const data = g.getImageData(0, 0, cv.width, cv.height);
   const d = data.data;
-  let r, gr, b;
-  if (key === 'auto') [r, gr, b] = [d[0], d[1], d[2]];
-  else {
-    const n = parseInt(key.slice(1), 16);
-    [r, gr, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-  }
+  const keys = new Set((Array.isArray(key) ? key : [key]).map((k) =>
+    k === 'auto' ? (d[0] << 16) | (d[1] << 8) | d[2] : parseInt(k.slice(1), 16)));
   for (let i = 0; i < d.length; i += 4) {
-    if (d[i] === r && d[i + 1] === gr && d[i + 2] === b) d[i + 3] = 0;
+    if (keys.has((d[i] << 16) | (d[i + 1] << 8) | d[i + 2])) d[i + 3] = 0;
   }
   g.putImageData(data, 0, 0);
   return cv;
@@ -123,6 +120,3 @@ export function loadImage(src) {
   });
 }
 
-// Presets: atlases for known sheets, matched by image size, so loading a
-// sheet alone is enough. Filled in as sheets are mapped.
-export const PRESETS = {};

@@ -196,7 +196,7 @@ button[aria-pressed="true"] { color: var(--mute); text-decoration: line-through;
     </div>
     <div class="panel">
       <h3>Character skin</h3>
-      <p>Load a sprite sheet and its atlas .json from your computer. It stays in this browser and is never uploaded. Map a raw rip with <code>tools/slice.py</code>.</p>
+      <p>Load a sprite sheet from your computer. Known sheets map themselves; others need their atlas .json (make one with <code>tools/slice.py</code>). It stays in this browser and is never uploaded.</p>
       <div class="row" style="justify-content:flex-start">
         <label class="filebtn">Load sheet<input type="file" id="skin-file" class="vh" accept="image/png,image/gif,.json,application/json" multiple></label>
         <button id="skin-reset" type="button">Built-in runner</button>
@@ -218,7 +218,8 @@ button[aria-pressed="true"] { color: var(--mute); text-decoration: line-through;
     <div class="panel">
       <h3>How an act is made</h3>
       <ol class="flow">
-        <li>The seed and a segment index pick one production from the grammar.</li>
+        <li>The seed generates every zone: its name, time of day, palette, ground pattern, skyline and which sections it favors.</li>
+        <li>The seed and a segment index pick one production from that zone's mix.</li>
         <li>The production writes terrain into 128×128 chunks with two collision layers, so loops work.</li>
         <li>The generator tracks the speed you'll be carrying. Before any hazard it adds a climb, so every hazard is on screen at least half a second.</li>
         <li>Falling into a gap drops you to a lower route with a spring back up. Early zones cost time, never a life.</li>
