@@ -10,6 +10,7 @@ export const PRESETS = {
   '1131x1862': {
     name: 'Knuckles (Sonic Team / SEGA sprites)',
     key: ['#107084', '#41a9b8', '#99d9ea'],
+    carts: ['glide'],
     anims: {
       idle: { frames: [[24, 277, 48, 48]], pivot: "feet" },
       bored: { frames: [[76, 277, 48, 48], [128, 277, 48, 48], [180, 277, 48, 48], [232, 277, 48, 48], [285, 277, 48, 48], [337, 277, 48, 48], [389, 277, 48, 48], [441, 277, 48, 48], [493, 277, 48, 48], [545, 277, 50, 48]], pivot: "feet", fps: 6 },

@@ -39,7 +39,8 @@ const ui = {
 
 let mode = 'title';
 let core = null, bot = null, frame = 0;
-let enabled = new Set(store.get('iz.carts', []).filter((id) => CARTS.some((c) => c.id === id)));
+// Glide & Climb starts on: it's the moveset the mapped character expects.
+let enabled = new Set(store.get('iz.carts.v2', ['glide']).filter((id) => CARTS.some((c) => c.id === id)));
 let seed = cleanSeed(location.hash.slice(1)) || store.get('iz.seed', '') || randomSeed();
 let overT = 0, overAt = 0;
 let hudCache = {};
@@ -180,7 +181,7 @@ function renderCarts() {
     box.checked = enabled.has(c.id);
     box.addEventListener('change', () => {
       if (box.checked) enabled.add(c.id); else enabled.delete(c.id);
-      store.set('iz.carts', [...enabled]);
+      store.set('iz.carts.v2', [...enabled]);
       if (mode === 'title') boot(false);
       else start();
     });
@@ -218,6 +219,14 @@ async function applySkin(src, atlas, save) {
   atlas ??= matchPreset(img.naturalWidth, img.naturalHeight);
   if (!atlas) throw new Error(`No layout is known for a ${img.naturalWidth}×${img.naturalHeight} sheet. Load its atlas .json with it.`);
   renderer.skin = new SpriteSkin(img, atlas);
+  // A skin can name the carts its moves need (Knuckles: glide & climb).
+  const need = (atlas.carts ?? []).filter((id) => !enabled.has(id) && CARTS.some((c) => c.id === id));
+  if (need.length) {
+    need.forEach((id) => enabled.add(id));
+    store.set('iz.carts.v2', [...enabled]);
+    renderCarts();
+    if (mode === 'title') boot(false); else if (mode === 'play') start();
+  }
   $('skin-status').textContent = `Using ${renderer.skin.name}`;
   if (save) store.set('iz.skin', { src, atlas });
 }
