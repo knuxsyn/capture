@@ -42,7 +42,7 @@ export class Player {
       ground: false, curled: false, rolling: false, jumping: false,
       spindash: false, rev: 0, crouch: false, pushing: false,
       layer: 0, lock: 0, facing: 1, hurt: false, invuln: 0, dead: false,
-      mode: 0, ext: {},
+      mode: 0, ext: {}, lookUp: false, edge: false, idleT: 0,
     });
   }
 
@@ -78,6 +78,7 @@ export class Player {
     else this.airStep(inp, w, ev);
     if (this.invuln > 0 && !this.hurt) this.invuln--;
     this.mode = this.ground ? modeOf(this.angle) : 0;
+    this.idleT = this.ground && this.gsp === 0 && !this.crouch && !this.lookUp && !this.spindash ? this.idleT + 1 : 0;
   }
 
   groundStep(inp, w, ev) {
@@ -101,6 +102,7 @@ export class Player {
     }
 
     this.crouch = !this.rolling && inp.down && this.gsp === 0 && modeOf(this.angle) === 0;
+    this.lookUp = !this.rolling && !this.crouch && inp.up && this.gsp === 0 && modeOf(this.angle) === 0;
     if (this.crouch && inp.jumpPressed) {
       this.spindash = true;
       this.rev = 0;
@@ -211,10 +213,12 @@ export class Player {
     const [dx, dy] = DOWN[mode], [tx, ty] = ALONG[mode];
     const hr = this.hr, wr = this.wr, top = mode === 0;
     const fx = this.x + dx * hr, fy = this.y + dy * hr;
-    const h = closer(
-      w.cast(fx - tx * wr, fy - ty * wr, dx, dy, this.mask, top),
-      w.cast(fx + tx * wr, fy + ty * wr, dx, dy, this.mask, top),
-    );
+    const a = w.cast(fx - tx * wr, fy - ty * wr, dx, dy, this.mask, top);
+    const b = w.cast(fx + tx * wr, fy + ty * wr, dx, dy, this.mask, top);
+    const h = closer(a, b);
+    // One foot over nothing on flat ground: the player is at a ledge.
+    const off = (s) => !s || s.dist > 8;
+    this.edge = mode === 0 && off(a) !== off(b);
     const tol = Math.min(Math.max(Math.abs(this.xsp), Math.abs(this.ysp)) + 4, 14);
     if (!h || h.dist > tol) {
       this.detach();
@@ -247,9 +251,11 @@ export class Player {
   airStep(inp, w, ev) {
     const P = this.P;
     this.pushing = false;
+    this.edge = false;
+    this.lookUp = false;
     let handled = false;
     for (const f of this.hooks.beforeAir) {
-      if (f(this, inp, ev)) { handled = true; break; }
+      if (f(this, inp, ev, w)) { handled = true; break; }
     }
     if (!handled) {
       if (this.jumping && !inp.jump && this.ysp < -P.jmpCut) this.ysp = -P.jmpCut;

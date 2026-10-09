@@ -62,4 +62,43 @@ for (const [name, carts] of [['moon', [base, moon]], ['skyways', [base, skyways]
   check('glide: extends airtime', gliding > plain * 1.5, `${plain} -> ${gliding} frames`);
 }
 
+// Climb: glide into a 160 px wall, grab it, climb, pull up onto the top.
+{
+  const wallX = 600;
+  const core = createCore({ seed: 1, carts: [base, glide, { id: 'fixture', segments: [
+    { id: 'start', build: (b) => { b.flat(wallX); b.step(-160); b.flat(4000); } },
+  ] }] }).start();
+  for (let i = 0; i < 20; i++) core.step({});
+  const top = core.gen.segments[0].y0 - 160;
+  let grabbed = false, ledged = false, t = 0;
+  core.step({ right: true, jump: true });
+  for (; t < 30; t++) core.step({ right: true, jump: t < 14 });
+  core.step({ right: true, jump: true });               // second press: glide
+  for (; t < 400 && !(core.player.ground && core.player.y < top); t++) {
+    const g = core.player.ext;
+    grabbed ||= !!g.climbing;
+    ledged ||= g.ledge > 0;
+    core.step({ right: !g.climbing, up: !!g.climbing, jump: !g.climbing });
+  }
+  const p = core.player;
+  check('climb: glide grabs the wall', grabbed);
+  check('climb: pulls up onto the ledge', ledged && p.ground && p.y < top && p.x > wallX, `x=${p.x.toFixed(0)} y=${p.y.toFixed(0)} top=${top}`);
+}
+
+// Glide landing: belly-slide, then get up.
+{
+  const core = createCore({ seed: 1, carts: [base, glide, { id: 'fixture', segments: [{ id: 'start', build: (b) => b.flat(6000) }] }] }).start();
+  for (let i = 0; i < 20; i++) core.step({});
+  core.step({ right: true, jump: true });
+  let t = 0, slid = false, gotUp = false;
+  for (; t < 30; t++) core.step({ right: true, jump: t < 14 });
+  core.step({ right: true, jump: true });
+  for (; t < 600; t++) {
+    core.step({ right: true, jump: true });
+    slid ||= !!core.player.ext.slide;
+    gotUp ||= core.player.ext.getUp > 0;
+  }
+  check('glide: landing slides, then gets up', slid && gotUp);
+}
+
 process.exit(failed ? 1 : 0);

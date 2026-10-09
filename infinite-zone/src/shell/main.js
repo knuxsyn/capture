@@ -293,6 +293,9 @@ $('mute').addEventListener('click', () => {
 $('seed').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); start(); } });
 document.addEventListener('visibilitychange', () => { if (document.hidden && mode === 'play') setMode('paused'); });
 
+// Console handle for modders: iz.core, iz.renderer.
+window.iz = { get core() { return core; }, renderer };
+
 renderCarts();
 restoreSkin();
 toTitle();

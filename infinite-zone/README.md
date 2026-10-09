@@ -18,7 +18,7 @@ npm run build   # dist/index.html: one self-contained file
 | Base cart | `src/content/base.js` | 15 segment productions, 7 object types, a biome generator, 4 hand-made palettes |
 | Players | `src/content/bot.js` | Expert bot (attract mode, traversal) and a reaction-time runner (fairness) |
 | Shell | `src/shell/` | Canvas renderer, sprite skins, input, synth SFX, page loop |
-| Mods | `mods/` | Example carts: physics (`moon`), content (`skyways`), ability (`glide`) |
+| Mods | `mods/` | Example carts: physics (`moon`), content (`skyways`), moveset (`glide`: glide, wall climb, ledge pull-up, belly-slide) |
 
 ## Writing a cartridge
 
@@ -79,11 +79,13 @@ The built-in runner is drawn in code. Any sprite sheet can replace it:
 2. Write an atlas mapping animations to frame numbers: `idle walk run dash roll spindash skid push crouch spring fall hurt die` (see `src/shell/skin.js`; missing ones fall back sensibly).
 3. In the page, **Load sheet** with the image and the atlas. It stays in that browser. For local development, put `sheet.png` and `skin.json` in `skins/local/` (git-ignored) and `npm run serve`.
 
-Third-party art never goes in the repo or the bundle. Known sheet layouts live in `src/shell/presets.js` (matched by image size, coordinates only), so the image alone is enough. The S3K Knuckles sheet from The Spriters Resource (ripped by Triangly & Paraemon, 1131×1862) is mapped: idle, walk, run, roll, spindash, skid, push, crouch, spring, hurt, death and glide. Pair it with the Glide cartridge.
+Third-party art never goes in the repo or the bundle. Known sheet layouts live in `src/shell/presets.js` (matched by image size, coordinates only), so the image alone is enough. The S3K Knuckles sheet from The Spriters Resource (ripped by Triangly & Paraemon, 1131×1862) is mapped: idle, bored, look up, ledge balance, walk, run, roll, spindash, skid, push, crouch, spring, hurt, death, plus glide, glide turn, drop, belly-slide, get up, climb and ledge pull-up. Pair it with the Glide & Climb cartridge.
+
+`tools/bundle.mjs --skin sheet.png` also writes `dist/personal.html` with the sheet embedded, for your own offline play (never publish or commit it).
 
 ## Controls
 
-Arrows or WASD to run, Z/X/Space to jump, ↓ to roll, ↓ + jump to rev a spindash. P pauses, G shows sensors, layers and segment boundaries, R restarts the seed, M mutes.
+Arrows or WASD to run, Z/X/Space to jump, ↓ to roll, ↓ + jump to rev a spindash. ↑ looks up. With Glide & Climb: jump again mid-air to glide, glide into a wall to grab it, ↑/↓ to climb, jump to kick off. P pauses, G shows sensors, layers and segment boundaries, R restarts the seed, M mutes.
 
 ## Not affiliated
 

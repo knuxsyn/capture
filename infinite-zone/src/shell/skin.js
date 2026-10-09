@@ -16,29 +16,41 @@
 // player; "center" centers it on the player. ox/oy override the pivot
 // point within a frame. Missing animations fall back along FALLBACK.
 
-export const ANIMS = ['idle', 'walk', 'run', 'dash', 'roll', 'spindash', 'skid', 'push', 'crouch', 'spring', 'fall', 'glide', 'hurt', 'die'];
+export const ANIMS = ['idle', 'bored', 'lookup', 'balance', 'walk', 'run', 'dash', 'roll', 'spindash', 'skid', 'push', 'crouch',
+  'spring', 'fall', 'glide', 'glideTurn', 'drop', 'glideSlide', 'getUp', 'climb', 'climbUp', 'hurt', 'die'];
 
 const FALLBACK = {
   dash: 'run', run: 'walk', walk: 'idle', fall: 'walk', spring: 'fall', skid: 'walk',
   push: 'walk', crouch: 'idle', spindash: 'roll', hurt: 'fall', die: 'hurt', roll: 'idle', glide: 'fall',
+  bored: 'idle', lookup: 'idle', balance: 'idle', glideTurn: 'glide', drop: 'fall', glideSlide: 'glide',
+  getUp: 'crouch', climb: 'fall', climbUp: 'climb',
 };
 
 // Which animation a player state shows, S3K-style.
 export function animOf(p) {
   if (p.dead) return 'die';
   if (p.hurt) return 'hurt';
-  if (p.ext.gliding) return 'glide';
+  const g = p.ext;
+  if (g.ledge > 0) return 'climbUp';
+  if (g.climbing) return 'climb';
+  if (g.gliding) return g.turn > 0 ? 'glideTurn' : 'glide';
+  if (g.slide) return 'glideSlide';
+  if (g.getUp > 0) return 'getUp';
+  if (g.drop && !p.ground) return 'drop';
+  if (g.dropLand > 0) return 'crouch';
   if (p.spindash) return 'spindash';
   if (p.curled) return 'roll';
   if (!p.ground) return p.ext.sprung ? 'spring' : 'fall';
   const s = Math.abs(p.gsp);
   if (p.crouch) return 'crouch';
+  if (p.lookUp) return 'lookup';
   if (p.pushing) return 'push';
   if (s > 3 && Math.sign(p.gsp) !== p.facing) return 'skid';
   if (s >= 10) return 'dash';
   if (s >= 6) return 'run';
   if (s > 0) return 'walk';
-  return 'idle';
+  if (p.edge) return 'balance';
+  return p.idleT > 180 ? 'bored' : 'idle';
 }
 
 // Frames to hold each image, from the S3K rules: faster = quicker cycle.
@@ -46,6 +58,7 @@ function holdFrames(name, p, fps) {
   const s = Math.abs(p.gsp || p.xsp);
   if (name === 'walk' || name === 'run' || name === 'dash') return Math.max(1, 8 - s);
   if (name === 'roll' || name === 'spindash') return Math.max(1, 4 - s);
+  if (name === 'climb') return p.ysp === 0 ? Infinity : 6;
   return Math.max(1, Math.round(60 / (fps || 10)));
 }
 
