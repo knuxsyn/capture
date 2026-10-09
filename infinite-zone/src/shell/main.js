@@ -11,8 +11,9 @@ import { PRESETS } from './presets.js';
 import { moon } from '../../mods/moon.js';
 import { skyways } from '../../mods/skyways.js';
 import { glide } from '../../mods/glide.js';
+import { circuit } from '../../mods/circuit.js';
 
-const CARTS = [skyways, glide, moon];
+const CARTS = [circuit, glide, skyways, moon];
 const STEP = 1000 / 60;
 const $ = (id) => document.getElementById(id);
 
@@ -39,14 +40,23 @@ const ui = {
 
 let mode = 'title';
 let core = null, bot = null, frame = 0;
-// Glide & Climb starts on: it's the moveset the mapped character expects.
-let enabled = new Set(store.get('iz.carts.v2', ['glide']).filter((id) => CARTS.some((c) => c.id === id)));
+// Echidna Circuit (and the Glide & Climb moveset it needs) start on.
+const CARTS_KEY = 'iz.carts.v3';
+let enabled = new Set(store.get(CARTS_KEY, ['circuit', 'glide']).filter((id) => CARTS.some((c) => c.id === id)));
 let seed = cleanSeed(location.hash.slice(1)) || store.get('iz.seed', '') || randomSeed();
 let overT = 0, overAt = 0;
 let hudCache = {};
 
+// Enabled carts plus whatever they require (the circuit needs glide).
+function active() {
+  const ids = new Set(enabled);
+  for (const c of CARTS) if (ids.has(c.id)) for (const r of c.requires ?? []) ids.add(r);
+  return ids;
+}
+
 function carts() {
-  return [base, ...CARTS.filter((c) => enabled.has(c.id))];
+  const ids = active();
+  return [base, ...CARTS.filter((c) => ids.has(c.id))];
 }
 
 function boot(play) {
@@ -86,7 +96,7 @@ function banner() {
   const z = core.zone();
   if (!z) return;
   const el = $('banner');
-  el.innerHTML = `<span>${z.name}</span><small>Act ${core.act()}</small>`;
+  el.innerHTML = `<span>${z.name}</span><small>Act ${core.act()}${z.lap ? ` · Lap ${z.lap + 1}` : ''}</small>`;
   el.classList.remove('show');
   void el.offsetWidth;
   el.classList.add('show');
@@ -118,7 +128,7 @@ function hud() {
     rings: String(core.rings),
     dist: `${Math.floor(core.distance / 16).toLocaleString()} m`,
     lives: `Lives ${core.lives}`,
-    zone: core.zone() ? `${core.zone().name} · Act ${core.act()}` : '',
+    zone: core.zone() ? `${core.zone().name} · Act ${core.act()}${core.zone().lap ? ` · Lap ${core.zone().lap + 1}` : ''}` : '',
   };
   for (const k in v) {
     if (hudCache[k] !== v[k]) {
@@ -178,10 +188,15 @@ function renderCarts() {
     row.querySelector('b').textContent = c.name;
     row.querySelector('small').textContent = c.blurb;
     const box = row.querySelector('input');
-    box.checked = enabled.has(c.id);
+    const ids = active();
+    const neededBy = CARTS.find((o) => enabled.has(o.id) && (o.requires ?? []).includes(c.id));
+    box.checked = ids.has(c.id);
+    box.disabled = !!neededBy;
+    if (neededBy) row.querySelector('small').textContent += ` Needed by ${neededBy.name}.`;
     box.addEventListener('change', () => {
       if (box.checked) enabled.add(c.id); else enabled.delete(c.id);
-      store.set('iz.carts.v2', [...enabled]);
+      store.set(CARTS_KEY, [...enabled]);
+      renderCarts();
       if (mode === 'title') boot(false);
       else start();
     });
@@ -223,7 +238,7 @@ async function applySkin(src, atlas, save) {
   const need = (atlas.carts ?? []).filter((id) => !enabled.has(id) && CARTS.some((c) => c.id === id));
   if (need.length) {
     need.forEach((id) => enabled.add(id));
-    store.set('iz.carts.v2', [...enabled]);
+    store.set(CARTS_KEY, [...enabled]);
     renderCarts();
     if (mode === 'title') boot(false); else if (mode === 'play') start();
   }

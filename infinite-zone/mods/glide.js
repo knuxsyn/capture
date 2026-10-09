@@ -5,7 +5,13 @@
 //   off, climb past the top to pull yourself onto the ledge.
 const TAU = Math.PI * 2;
 const LEDGE_FRAMES = 18;
+const CRACKED = 4; // world MAT.CRACKED: breakable walls shatter instead of being grabbed
 const solidAt = (w, p, x, y) => w.solid(Math.floor(x), Math.floor(y), p.mask, false);
+// Only near-vertical, unbroken rock: no cracked walls, and nothing leaning
+// over the climber (a loop's inner curve would pin him under it).
+const grabbable = (w, p, x, y) => solidAt(w, p, x, y) &&
+  w.get(Math.floor(x), Math.floor(y)) >> 4 !== CRACKED &&
+  !solidAt(w, p, x - p.facing * 6, y - p.hr - 6);
 
 export const glide = {
   id: 'glide',
@@ -38,6 +44,10 @@ export const glide = {
           ev.push('jump');
           return true;
         }
+        // Pinned (climbing into an overhang): let go.
+        g.stuck = (inp.up || inp.down) && Math.abs(p.y - (g.lastY ?? p.y)) < 0.01 ? (g.stuck ?? 0) + 1 : 0;
+        g.lastY = p.y;
+        if (g.stuck > 20) { g.climbing = false; g.stuck = 0; return false; }
         p.xsp = 0;
         p.ysp = inp.up ? -1 : inp.down ? 1 : 0;
         const wx = p.x + p.facing * (P.pushR + 2);
@@ -68,7 +78,7 @@ export const glide = {
         g.drop = true;
         return false;
       }
-      if (solidAt(w, p, p.x + p.facing * (P.pushR + 2), p.y)) {
+      if (grabbable(w, p, p.x + p.facing * (P.pushR + 2), p.y)) {
         g.gliding = false;
         g.climbing = true;
         p.uncurl();

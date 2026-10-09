@@ -18,7 +18,7 @@ npm run build   # dist/index.html: one self-contained file
 | Base cart | `src/content/base.js` | 15 segment productions, 7 object types, a biome generator, 4 hand-made palettes |
 | Players | `src/content/bot.js` | Expert bot (attract mode, traversal) and a reaction-time runner (fairness) |
 | Shell | `src/shell/` | Canvas renderer, sprite skins, input, synth SFX, page loop |
-| Mods | `mods/` | Example carts: physics (`moon`), content (`skyways`), moveset (`glide`: glide, wall climb, ledge pull-up, belly-slide) |
+| Mods | `mods/` | `circuit` (the default campaign), physics (`moon`), content (`skyways`), moveset (`glide`: glide, wall climb, ledge pull-up, belly-slide) |
 
 ## Writing a cartridge
 
@@ -61,6 +61,20 @@ The builder `b` is the grammar's vocabulary: `flat`, `slope`, `hills`, `dip`, `g
 `node test/flow.mjs` prints deaths, hits and slams per production, which is where to look when a new production feels unfair.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the model behind each layer.
+
+## Echidna Circuit (default)
+
+Three designed zones that loop forever, two acts each, harder every lap. Each one is built around what Knuckles' moveset and the physics allow:
+
+| Zone | Look | Asks you to |
+|---|---|---|
+| Coral Drift | sunny seascape, sand, palms, islands | glide chasms wider than any jump (sized from the glide arc), hop sea stacks, ride big dunes and loops |
+| Ember Canyon | red rock at dusk, strata, mesas, hoodoos | climb cliffs taller than any spring (rings run up the face), smash cracked rock by rolling, spindashing or gliding into it |
+| Static Ruins | neon night, bricks, colonnades | climb towers and glide between them, sprint crumbling bridges, jump or roll past flyers |
+
+Tier rises a third of a step per zone: wider chasms, taller cliffs, faster crumbling, more flyers. Lap 2 changes the time of day, later laps rotate the hue, and from lap 3 some chasms and bridges are true pits. Falls before that land on catch floors; crumbled bridges rebuild when you respawn.
+
+`node test/circuit.mjs`: the expert bot and the reaction-time runner both play the circuit with the full moveset (they glide, climb, smash and spindash), plus an endurance run of three laps on 10 seeds.
 
 ## Seeds and biomes
 

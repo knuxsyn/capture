@@ -77,7 +77,51 @@ function backdrop(z, rng) {
   let g = far.getContext('2d');
   g.fillStyle = z.far;
   const style = z.skyline ?? 'peaks';
-  if (style === 'spires') {
+  if (style === 'sea') {
+    // Islands on the horizon over open water with a shimmer.
+    for (let k = 0; k < 4; k++) {
+      const x = rng.range(0, BW), w = rng.range(40, 110), h = rng.range(10, 34);
+      wrapped((o) => { g.beginPath(); g.ellipse(x + o, 112, w / 2, h, 0, Math.PI, TAU); g.fill(); });
+    }
+    g.fillStyle = z.water ?? z.far;
+    g.fillRect(0, 112, BW, 28);
+    g.fillStyle = 'rgba(255,255,255,0.35)';
+    for (let k = 0; k < 40; k++) g.fillRect(Math.floor(rng.range(0, BW)), Math.floor(rng.range(115, 138)), Math.floor(rng.range(4, 14)), 1);
+  } else if (style === 'canyon') {
+    // Layered mesas, the far rank paler.
+    for (const [tint, base, n] of [[0.35, 104, 5], [0, 122, 6]]) {
+      for (let k = 0; k < n; k++) {
+        const x = rng.range(0, BW), w = rng.range(50, 130), h = rng.range(30, 80);
+        wrapped((o) => {
+          g.globalAlpha = 1 - tint;
+          g.beginPath();
+          g.moveTo(x + o - w / 2 - 14, 140); g.lineTo(x + o - w / 2, base - h);
+          g.lineTo(x + o + w / 2, base - h); g.lineTo(x + o + w / 2 + 14, 140); g.fill();
+        });
+      }
+    }
+    g.globalAlpha = 1;
+  } else if (style === 'ruins') {
+    // A broken colonnade with arches; lit windows when the zone glows.
+    for (let x0 = 0; x0 < BW; x0 += rng.int(40, 64)) {
+      const h = rng.range(50, 115), w = rng.range(16, 28);
+      g.fillRect(x0, 140 - h, w, h);
+      if (rng.chance(0.5)) g.fillRect(x0 - 4, 140 - h - 6, w + 8, 6);
+      if (rng.chance(0.4)) {
+        g.beginPath();
+        g.arc(x0 + w + 14, 140 - h * 0.55, 18, Math.PI, TAU);
+        g.lineWidth = 6; g.strokeStyle = z.far; g.stroke();
+      }
+      if (z.glow) {
+        g.fillStyle = z.glow;
+        g.globalAlpha = 0.5;
+        for (let y = 140 - h + 10; y < 132; y += 14) if (rng.chance(0.45)) g.fillRect(x0 + 5, y, 4, 5);
+        g.globalAlpha = 1;
+        g.fillStyle = z.far;
+      }
+    }
+    g.fillRect(0, 128, BW, 12);
+  } else if (style === 'spires') {
     for (let k = 0; k < 14; k++) {
       const x = rng.range(0, BW), w = rng.range(10, 26), h = rng.range(50, 125);
       wrapped((o) => { g.beginPath(); g.moveTo(x + o - w, 140); g.lineTo(x + o, 140 - h); g.lineTo(x + o + w, 140); g.fill(); });
@@ -102,7 +146,52 @@ function backdrop(z, rng) {
   g = mid.getContext('2d');
   g.fillStyle = z.mid;
   const ridge = (x) => 46 - 18 * wave(x, 3, ph2) - 10 * wave(x, 7, ph);
-  if (style === 'canopy') {
+  if (style === 'sea') {
+    // Palms on a low dune.
+    silhouette(g, 100, (x) => 84 - 6 * wave(x, 2, ph2));
+    for (let k = 0; k < 7; k++) {
+      const x = rng.range(0, BW), h = rng.range(36, 62), lean = rng.range(-14, 14);
+      wrapped((o) => {
+        g.strokeStyle = z.mid;
+        g.lineWidth = 3;
+        g.beginPath();
+        g.moveTo(x + o, 86);
+        g.quadraticCurveTo(x + o + lean * 0.3, 86 - h / 2, x + o + lean, 86 - h);
+        g.stroke();
+        g.lineWidth = 2.5;
+        for (let j = 0; j < 6; j++) {
+          const a = (j / 6) * TAU, len = 16 + (j % 2) * 4;
+          g.beginPath();
+          g.moveTo(x + o + lean, 86 - h);
+          g.quadraticCurveTo(x + o + lean + Math.cos(a) * len * 0.6, 86 - h - 8, x + o + lean + Math.cos(a) * len, 86 - h + Math.abs(Math.sin(a)) * 10 + 4);
+          g.stroke();
+        }
+      });
+    }
+  } else if (style === 'canyon') {
+    // Hoodoos: tall rock pillars with caps.
+    silhouette(g, 100, (x) => 88 - 4 * wave(x, 3, ph));
+    for (let k = 0; k < 9; k++) {
+      const x = rng.range(0, BW), w = rng.range(8, 16), h = rng.range(30, 70);
+      wrapped((o) => {
+        g.fillRect(x + o - w / 2, 92 - h, w, h);
+        g.beginPath();
+        g.ellipse(x + o, 92 - h, w * 0.9, 5, 0, 0, TAU);
+        g.fill();
+      });
+    }
+  } else if (style === 'ruins') {
+    // Rubble and toppled columns.
+    silhouette(g, 100, (x) => 82 - 5 * wave(x, 5, ph) - 3 * wave(x, 11, ph2));
+    for (let k = 0; k < 8; k++) {
+      const x = rng.range(0, BW), w = rng.range(10, 18), h = rng.range(18, 50);
+      wrapped((o) => {
+        g.fillRect(x + o, 84 - h, w, h);
+        g.beginPath();
+        g.moveTo(x + o, 84 - h); g.lineTo(x + o + w * 0.4, 84 - h - 6); g.lineTo(x + o + w, 84 - h); g.fill();
+      });
+    }
+  } else if (style === 'canopy') {
     for (let k = 0; k < 26; k++) {
       const x = rng.range(0, BW), r = rng.range(9, 18), y = rng.range(30, 52);
       wrapped((o) => { g.beginPath(); g.arc(x + o, y, r, 0, TAU); g.fill(); g.fillRect(x + o - r, y, 2 * r, 100 - y); });
@@ -207,7 +296,16 @@ export class Renderer {
         const d = run++;
         const wy = y0 + y, mat = v >> 4;
         let c;
-        if (mat === MAT.ROCK) {
+        if (mat === MAT.CRACKED) {
+          // Stacked stone slabs, staggered per row, with dark seams and
+          // a few diagonal fractures.
+          const row = Math.floor(wy / 10), sx = wx + (row & 1) * 9;
+          const seam = wy % 10 === 0 || sx % 18 === 0;
+          const fracture = (wx + wy * 2) % 29 === 0 && hash(sx >> 4, row) % 3 === 0;
+          c = d < 2 ? P.rock[0] : seam || fracture ? P.soil[3] : hash(sx >> 4, row) & 1 ? P.rock[1] : P.rock[2];
+        } else if (mat === MAT.CRUMBLE) {
+          c = d < 2 ? P.wood[0] : wx % 14 === 0 || d > 8 ? P.wood[2] : P.wood[1];
+        } else if (mat === MAT.ROCK) {
           c = d < 2 ? P.rock[0] : ((wx + wy) >> 3) & 1 ? P.rock[1] : P.rock[2];
         } else if (mat === MAT.WOOD) {
           c = d < 2 ? P.wood[0] : (wx & 15) === 0 || d > 9 ? P.wood[2] : P.wood[1];

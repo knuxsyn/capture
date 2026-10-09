@@ -51,6 +51,10 @@ flowchart LR
 7. Falling costs time, not a life, until difficulty 0.55: gaps and platform runs get catch floors with a spring back up.
 8. No walls in the running line: rises are ramps.
 
+9. Walls are climbable only where a climber fits: Knuckles grabs near-vertical rock, never cracked rock (it shatters) or a curve leaning over him, and lets go if pinned.
+10. Crumbling bridges have gaps under 40 px, so speed carries you across; a fallen bridge rebuilds on respawn so a checkpoint never faces an empty pit.
+11. A move-using player is part of the eval: both test players glide gaps wider than 70% of their jump range, climb walls taller than 80% of jump height, spindash into cracked rock when slow, and run straight over gaps short enough to cross on speed.
+
 Invariants 1–5 came from failures the expert bot found. 6–8 came from the reaction-time runner. The expert proves a level *can* be cleared; the runner proves it's *fair* to someone holding right. Before the fairness rules, the same runner died 3.2 times per 100 segments (14 in zone 1 across 60 seeds); after, 0.1, all in deliberate late pits.
 
 The loop: **add a production → `npm test` → read the per-segment tables → fix geometry or add an invariant.**

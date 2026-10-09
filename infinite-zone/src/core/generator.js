@@ -117,7 +117,7 @@ export class Builder {
     // Zone flavor: amp scales heights, stretch scales lengths, loopBias
     // nudges loop size in blocks. Productions opt in.
     const z = gen.zone() ?? {};
-    this.zone = { amp: z.amp ?? 1, stretch: z.stretch ?? 1, loopBias: z.loopBias ?? 0 };
+    this.zone = { amp: z.amp ?? 1, stretch: z.stretch ?? 1, loopBias: z.loopBias ?? 0, tier: z.tier ?? 0, theme: z.theme ?? null };
   }
 
   // Integrate the expected speed of a player holding right across one

@@ -8,7 +8,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const smooth = (t) => t * t * (3 - 2 * t);
 // Smoothstep peaks at 1.5x the mean grade. Length 4x rise keeps the
 // steepest point near 20 degrees, which is walkable from a standstill.
-const UPHILL = 4;
+export const UPHILL = 4;
 
 // ---------------------------------------------------------------- segments
 // Each production: { id, weight, minD, maxSpeed?, build(b) }. `b` is the
@@ -23,11 +23,11 @@ const UPHILL = 4;
 //   from difficulty 0.55. Platform runs always have a catch floor.
 // - Rises in the running line are ramps, never walls.
 
-const HAZARD_SPEED = 7.5;
+export const HAZARD_SPEED = 7.5;
 
 // A lower route under a gap: floor, ring trail, and a spring at the far
 // wall strong enough to clear it.
-function catchFloor(b, x0, x1, floorY, ledgeY) {
+export function catchFloor(b, x0, x1, floorY, ledgeY) {
   for (let x = Math.round(x0); x < x1; x++) b.column(x, floorY);
   const wall = floorY - ledgeY + 2 * b.P.standH;
   b.spawn('spring', x1 - 24, floorY - 8, { power: b.springHeight(10) > wall ? 10 : 16 });

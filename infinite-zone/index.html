@@ -99,6 +99,7 @@ button[aria-pressed="true"] { color: var(--mute); text-decoration: line-through;
 .keys dd { margin: 0; color: var(--mute); }
 .cart { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; cursor: pointer; padding: 8px; border-radius: 10px; border: 1px solid transparent; }
 .cart:hover { border-color: var(--line); }
+.cart:has(input:disabled) { cursor: default; opacity: 0.85; }
 .cart input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .cart .slot { width: 34px; height: 22px; border-radius: 4px; border: 2px solid var(--line); background: var(--ink); position: relative; margin-top: 2px; }
 .cart .slot::after { content: ''; position: absolute; left: 4px; right: 4px; bottom: 3px; height: 4px; border-radius: 2px; background: var(--line); }
@@ -148,7 +149,7 @@ button[aria-pressed="true"] { color: var(--mute); text-decoration: line-through;
     <div class="overlay" id="title">
       <div class="card">
         <h2>Infinite Zone</h2>
-        <p>Every act is generated from the seed. Same seed, same world.</p>
+        <p>Echidna Circuit: Coral Drift, Ember Canyon, Static Ruins, then round again, harder each lap. Glide chasms, climb cliffs, smash rock.</p>
         <button class="go" id="start" type="button">Start run</button>
         <p class="pulse">or press jump</p>
       </div>
@@ -212,6 +213,9 @@ button[aria-pressed="true"] { color: var(--mute); text-decoration: line-through;
         <dt>↓ + jump</dt><dd>Spindash: tap to rev, release ↓</dd>
         <dt>P</dt><dd>Pause</dd>
         <dt>G</dt><dd>Show sensors, layers, segments</dd>
+        <dt>jump, jump</dt><dd>Glide; hold to stay up, steer to turn</dd>
+        <dt>glide → wall</dt><dd>Grab it; ↑ ↓ to climb, jump to kick off</dd>
+        <dt>roll → rock</dt><dd>Cracked rock breaks under a roll, spindash or glide</dd>
         <dt>R</dt><dd>Restart on this seed</dd>
       </dl>
     </div>

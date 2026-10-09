@@ -15,7 +15,8 @@ export const SOLID_A = 1;
 export const SOLID_B = 2;
 export const BOTH = 3;
 export const TOP = 4;
-export const MAT = Object.freeze({ GROUND: 0, ROCK: 1, WOOD: 2, METAL: 3 });
+// CRACKED: breakable rock (render + climb rules). CRUMBLE: platforms that fall.
+export const MAT = Object.freeze({ GROUND: 0, ROCK: 1, WOOD: 2, METAL: 3, CRACKED: 4, CRUMBLE: 5 });
 export const px = (solid, mat = 0) => solid | (mat << 4);
 
 // Ground modes: 0 floor, 1 right wall, 2 ceiling, 3 left wall.
