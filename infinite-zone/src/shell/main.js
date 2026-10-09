@@ -198,9 +198,24 @@ const readAs = (file, how) => new Promise((resolve, reject) => {
   r[how](file);
 });
 
+// A preset matches its exact size, or the same sheet saved at another
+// scale (same aspect ratio): the atlas is scaled to fit.
+function matchPreset(w, h) {
+  for (const [size, a] of Object.entries(PRESETS)) {
+    const [pw, ph] = size.split('x').map(Number);
+    if (pw === w && ph === h) return a;
+    if (Math.abs(w / h - pw / ph) < 0.01) {
+      const k = w / pw, sc = (f) => f.map((v, i) => (i < 4 ? Math.round(v * k) : v * k));
+      const anims = Object.fromEntries(Object.entries(a.anims).map(([n, an]) => [n, { ...an, frames: an.frames.map(sc) }]));
+      return { ...a, anims, scale: k };
+    }
+  }
+  return null;
+}
+
 async function applySkin(src, atlas, save) {
   const img = await loadImage(src);
-  atlas ??= PRESETS[`${img.naturalWidth}x${img.naturalHeight}`];
+  atlas ??= matchPreset(img.naturalWidth, img.naturalHeight);
   if (!atlas) throw new Error(`No layout is known for a ${img.naturalWidth}×${img.naturalHeight} sheet. Load its atlas .json with it.`);
   renderer.skin = new SpriteSkin(img, atlas);
   $('skin-status').textContent = `Using ${renderer.skin.name}`;
@@ -230,6 +245,8 @@ $('skin-reset').addEventListener('click', () => {
 async function restoreSkin() {
   const saved = store.get('iz.skin', null);
   try {
+    // Personal offline builds (tools/bundle.mjs --skin) embed a sheet.
+    if (window.IZ_SKIN) return await applySkin(window.IZ_SKIN, undefined, false);
     if (saved) return await applySkin(saved.src, saved.atlas, false);
     // Local development: drop a sheet and skin.json into skins/local/.
     const res = await fetch('skins/local/skin.json');

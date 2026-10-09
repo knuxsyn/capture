@@ -198,7 +198,7 @@ button[aria-pressed="true"] { color: var(--mute); text-decoration: line-through;
       <h3>Character skin</h3>
       <p>Load a sprite sheet from your computer. Known sheets map themselves; others need their atlas .json (make one with <code>tools/slice.py</code>). It stays in this browser and is never uploaded.</p>
       <div class="row" style="justify-content:flex-start">
-        <label class="filebtn">Load sheet<input type="file" id="skin-file" class="vh" accept="image/png,image/gif,.json,application/json" multiple></label>
+        <label class="filebtn">Load sheet<input type="file" id="skin-file" class="vh" accept="image/*,.json,application/json" multiple></label>
         <button id="skin-reset" type="button">Built-in runner</button>
       </div>
       <p class="note" id="skin-status">Using the built-in runner</p>

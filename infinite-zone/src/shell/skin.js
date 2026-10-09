@@ -58,11 +58,13 @@ function keyOut(img, key) {
   if (!key) return cv;
   const data = g.getImageData(0, 0, cv.width, cv.height);
   const d = data.data;
-  const keys = new Set((Array.isArray(key) ? key : [key]).map((k) =>
-    k === 'auto' ? (d[0] << 16) | (d[1] << 8) | d[2] : parseInt(k.slice(1), 16)));
-  for (let i = 0; i < d.length; i += 4) {
-    if (keys.has((d[i] << 16) | (d[i + 1] << 8) | d[i + 2])) d[i + 3] = 0;
-  }
+  const keys = (Array.isArray(key) ? key : [key]).map((k) => {
+    const n = k === 'auto' ? (d[0] << 16) | (d[1] << 8) | d[2] : parseInt(k.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  });
+  // Small tolerance so recompressed (JPEG/WebP) sheets still key cleanly.
+  const near = (i) => keys.some(([r, g2, b]) => Math.abs(d[i] - r) + Math.abs(d[i + 1] - g2) + Math.abs(d[i + 2] - b) < 24);
+  for (let i = 0; i < d.length; i += 4) if (near(i)) d[i + 3] = 0;
   g.putImageData(data, 0, 0);
   return cv;
 }
@@ -70,6 +72,7 @@ function keyOut(img, key) {
 export class SpriteSkin {
   constructor(img, atlas) {
     this.name = atlas.name ?? 'Custom skin';
+    this.scale = atlas.scale ?? 1;
     this.sheet = keyOut(img, atlas.key ?? 'auto');
     const table = atlas.frames ?? [];
     this.anims = {};
@@ -105,7 +108,8 @@ export class SpriteSkin {
     // Pixel art rotates in 45-degree steps, like the original's rotated frames.
     if (p.ground && !center) ctx.rotate(-Math.round(p.angle / (Math.PI / 4)) * (Math.PI / 4));
     ctx.scale(p.facing, 1);
-    ctx.drawImage(this.sheet, sx, sy, w, h, -Math.round(px), Math.round((center ? 0 : p.hr) - py), w, h);
+    const k = 1 / this.scale;
+    ctx.drawImage(this.sheet, sx, sy, w, h, -Math.round(px * k), Math.round((center ? 0 : p.hr) - py * k), Math.round(w * k), Math.round(h * k));
     ctx.restore();
     return true;
   }

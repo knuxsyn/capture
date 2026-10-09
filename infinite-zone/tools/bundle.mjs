@@ -62,6 +62,15 @@ const bodyInner = html.slice(html.indexOf('<body>') + 6, html.indexOf('</body>')
 const fragment = `${head}\n${bodyInner.trim()}\n`;
 
 mkdirSync(resolve(root, 'dist'), { recursive: true });
+// Personal build: --skin sheet.png embeds a sheet for your own offline use.
+// Never publish or commit the output; the art belongs to its owners.
+const si = process.argv.indexOf('--skin');
+if (si > 0) {
+  const png = readFileSync(resolve(process.argv[si + 1])).toString('base64');
+  const inject = `<script>window.IZ_SKIN = 'data:image/png;base64,${png}';</script>\n<script>`;
+  writeFileSync(resolve(root, 'dist/personal.html'), full.replace('<script>\n(() => {', `${inject}\n(() => {`));
+  console.log('personal build with embedded skin -> dist/personal.html (do not publish)');
+}
 writeFileSync(resolve(root, 'dist/index.html'), full);
 writeFileSync(resolve(root, 'dist/artifact.html'), fragment);
 console.log(`bundled ${order.length} modules, ${(js.length / 1024).toFixed(1)} KB -> dist/index.html, dist/artifact.html`);
