@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Endless procedurally generated side-scroller on S3K-style physics, with a lock-on cartridge mod API.",
   "scripts": {
-    "test": "node test/eval.mjs && node test/carts.mjs",
+    "test": "node test/eval.mjs 100 60 && node test/flow.mjs && node test/carts.mjs",
     "build": "node tools/bundle.mjs",
     "serve": "npx --yes http-server -c-1 -p 8080 ."
   }

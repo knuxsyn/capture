@@ -21,6 +21,7 @@ export class Generator {
     this.i = 0;
     this.segments = [];
     this.last = null;
+    this.v = 0; // expected ground speed of a player holding right
   }
 
   ensure(xMax) {
@@ -29,14 +30,15 @@ export class Generator {
 
   // Choose the next production. Index 0 is the start; every 10th is a
   // checkpoint. Otherwise weighted by difficulty, never the same id twice.
-  choose(rng, d) {
+  // `calm` excludes hazards (productions that declare maxSpeed).
+  choose(rng, d, calm = false) {
     const reg = this.core.registry.segments;
     if (this.i === 0 && reg.has('start')) return reg.get('start');
     if (this.i % 10 === 0 && reg.has('checkpoint')) return reg.get('checkpoint');
     const pool = [];
     let total = 0;
     for (const s of reg.values()) {
-      if (!s.weight || (s.minD ?? 0) > d || s.id === this.last) continue;
+      if (!s.weight || (s.minD ?? 0) > d || s.id === this.last || (calm && s.maxSpeed)) continue;
       const wgt = typeof s.weight === 'function' ? s.weight(d) : s.weight;
       if (wgt <= 0) continue;
       pool.push([s, wgt]);
@@ -50,17 +52,26 @@ export class Generator {
   next() {
     const rng = createRng(mix(this.core.seed, this.i));
     const d = difficulty(this.i);
-    const prod = this.choose(rng, d);
+    let prod = this.choose(rng, d);
+    // Speed budget: a hazard is only fair if it's on screen long enough to
+    // react to. Arriving faster than it allows, climb first (a brake) or,
+    // with no headroom to climb, pick something without hazards.
+    if (prod.maxSpeed && this.v > prod.maxSpeed) {
+      const brake = this.core.registry.segments.get('brake');
+      prod = brake && this.y - WORLD.Y_TOP >= 96 ? brake : this.choose(rng, d, true);
+    }
     const b = new Builder(this, rng, d);
     prod.build(b);
     const seg = {
       id: prod.id, i: this.i, zone: Math.floor(this.i / ZONE_LEN),
       x0: this.x, x1: b.cx, y0: this.y, y1: b.cy, yLow: b.yLow, yHigh: b.yHigh,
+      vIn: this.v, vOut: b.v,
     };
     this.segments.push(seg);
     for (const f of this.core.registry.hooks.onSegment) f(seg, this.core);
     this.x = b.cx;
     this.y = b.cy;
+    this.v = b.v;
     this.last = prod.id;
     this.i++;
     return seg;
@@ -96,6 +107,16 @@ export class Builder {
     this.yHigh = gen.y;
     this.mat = MAT.GROUND;
     this.P = gen.core.registry.physics;
+    this.v = gen.v;
+  }
+
+  // Integrate the expected speed of a player holding right across one
+  // step of surface: v dv = (input accel - slope factor * sin) ds.
+  advance(dx, dy) {
+    const P = this.P, ds = Math.hypot(dx, dy), sin = -dy / ds, below = this.v < P.top;
+    const a = (below ? P.acc : 0) - P.slp * sin;
+    this.v = Math.sqrt(Math.max(0.25, this.v * this.v + 2 * a * ds));
+    if (below && sin >= 0 && this.v > P.top) this.v = P.top;
   }
 
   // Physics-derived reach, so productions stay traversable when a cart
@@ -118,7 +139,13 @@ export class Builder {
   ground(len, f = () => 0) {
     len = Math.round(len);
     const x0 = Math.round(this.cx), y0 = this.cy;
-    for (let i = 0; i < len; i++) this.column(x0 + i, Math.round(y0 + f(i / len)));
+    let prev = y0;
+    for (let i = 0; i < len; i++) {
+      const y = Math.round(y0 + f(i / len));
+      this.column(x0 + i, y);
+      this.advance(1, y - prev);
+      prev = y;
+    }
     this.cx = x0 + len;
     this.cy = Math.round(y0 + f(1));
     return this;

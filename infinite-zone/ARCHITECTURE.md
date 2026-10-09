@@ -47,12 +47,19 @@ flowchart LR
 3. Standing still on a floor-mode slope is stable (S2/S3K rule), so a stuck player can crouch and spindash.
 4. Every pit gets ≥ 288 px of runway. Platform gaps plus platform length ≥ the full-speed jump range, so a committed jump lands.
 5. Loops fill their lower outside down to the floor. No acute overhang exists for a player to run into from the convex side.
+6. A hazard is on screen for at least 0.5 s before contact. The builder integrates expected speed (`v dv = (accel − slp·sin θ) ds` per column); hazard productions declare `maxSpeed`, and the generator inserts a `brake` climb (rise = (v² − top²) / 2·slp) when the player would arrive faster.
+7. Falling costs time, not a life, until difficulty 0.55: gaps and platform runs get catch floors with a spring back up.
+8. No walls in the running line: rises are ramps.
 
-Each invariant came from a failure the bot found. That's the loop: **add a production → run `npm test` → read the per-segment deaths/stalls table → fix geometry or the invariant.**
+Invariants 1–5 came from failures the expert bot found. 6–8 came from the reaction-time runner. The expert proves a level *can* be cleared; the runner proves it's *fair* to someone holding right. Before the fairness rules, the same runner died 3.2 times per 100 segments (14 in zone 1 across 60 seeds); after, 0.1, all in deliberate late pits.
+
+The loop: **add a production → `npm test` → read the per-segment tables → fix geometry or add an invariant.**
 
 ## Shell
 
-Renderer paints each chunk once into a cached canvas: color comes from the zone palette and each pixel's depth below the surface (grass band → dark line → strata). Parallax strips are generated per zone. Camera has S3K-like caps (16 px/frame) plus a speed-scaled look-ahead.
+Renderer paints each chunk once into a cached canvas: color comes from the zone palette and each pixel's depth below the surface (grass band → dark line → strata). Parallax strips are generated per zone. The camera lives in the core (`camera.js`) so the fairness test sees exactly what the screen shows: S3K-like caps (16 px/frame) plus look-ahead up to 136 px at speed.
+
+Skins (`skin.js`) map player state to S3K's animation set and timing (walk and run frames hold `8 − |gsp|` frames, roll `4 − |gsp|`), rotate in 45° steps like the original's pre-rotated frames, and key out the sheet's background color.
 
 ## Where to take it next
 

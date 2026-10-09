@@ -6,7 +6,7 @@ Zero dependencies. No build step to develop; one script to bundle a single offli
 
 ```bash
 npm run serve   # http://localhost:8080 (ES modules need a server, not file://)
-npm test        # physics invariants + bot traversal across 100 seeds and every cart
+npm test        # physics invariants, bot traversal, fair-player trap budget, every cart
 npm run build   # dist/index.html: one self-contained file
 ```
 
@@ -15,9 +15,9 @@ npm run build   # dist/index.html: one self-contained file
 | Layer | Files | Role |
 |---|---|---|
 | Core | `src/core/` | Deterministic sim. No DOM. `step(input)` = one 60 Hz frame. |
-| Base cart | `src/content/base.js` | 14 segment productions, 7 object types, 4 zone palettes |
-| Bot | `src/content/bot.js` | Reference player for attract mode and the traversal eval |
-| Shell | `src/shell/` | Canvas renderer, input, synth SFX, page loop |
+| Base cart | `src/content/base.js` | 15 segment productions, 7 object types, 4 zone palettes |
+| Players | `src/content/bot.js` | Expert bot (attract mode, traversal) and a reaction-time runner (fairness) |
+| Shell | `src/shell/` | Canvas renderer, sprite skins, input, synth SFX, page loop |
 | Mods | `mods/` | Example carts: physics (`moon`), content (`skyways`), ability (`glide`) |
 
 ## Writing a cartridge
@@ -50,10 +50,27 @@ The builder `b` is the grammar's vocabulary: `flat`, `slope`, `hills`, `dip`, `g
 ## The contract
 
 1. **Determinism.** A level is a pure function of seed and carts. Segment *i* draws from `rng(mix(seed, i))`.
-2. **Traversability.** `npm test` runs the bot through 100 seeds × 60 segments, plus each cart combination. A production the bot can't clear fails the build. That's the eval loop for anyone adding content.
-3. **Walkability.** Uphill grades stay at or under ~20°, so a stopped player can always walk out. Pits get at least 288 px of runway. Platform spacing follows the full-speed jump arc.
+2. **Traversability.** The expert bot plays 100 seeds × 60 segments, plus each cart combination. A production it can't clear fails the build.
+3. **Fairness.** A reaction-time runner holds right, sees only what the camera shows, and reacts to a hazard only after it has been on screen for 0.5 s. Budget: no deaths in zones 1–2, at most 1 death, 1 hit and 0.5 wall slams per 100 segments. The generator keeps it by:
+   - **Speed budget.** The builder integrates the speed a player holding right will carry. Hazard productions declare `maxSpeed`; arriving faster, the generator inserts a `brake` climb first.
+   - **Catch floors.** Falling into a gap drops you to a lower route with a spring back up. Bottomless pits only appear in single-jump gaps, from difficulty 0.55.
+   - **Ramps, not walls.** Rises in the running line are ramps; drops are ledges.
+   - **Camera look-ahead** scales with speed, so hazards stay on screen longer at speed.
+4. **Walkability.** Uphill grades stay at or under ~20°, so a stopped player can always walk out, and a stopped player can stand, crouch and spindash on a slope.
+
+`node test/flow.mjs` prints deaths, hits and slams per production, which is where to look when a new production feels unfair.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the model behind each layer.
+
+## Character skins
+
+The built-in runner is drawn in code. Any sprite sheet can replace it:
+
+1. `python3 tools/slice.py sheet.png` finds every sprite on a rip and writes `sheet.frames.json` plus `sheet.preview.png` with each frame numbered.
+2. Write an atlas mapping animations to frame numbers: `idle walk run dash roll spindash skid push crouch spring fall hurt die` (see `src/shell/skin.js`; missing ones fall back sensibly).
+3. In the page, **Load sheet** with the image and the atlas. It stays in that browser. For local development, put `sheet.png` and `skin.json` in `skins/local/` (git-ignored) and `npm run serve`.
+
+Third-party art never goes in the repo or the bundle. Known sheet layouts can be registered in `PRESETS` (by image size) so the image alone is enough.
 
 ## Controls
 

@@ -5,3 +5,6 @@ standalone
 *.local
 .env
 .env.*
+
+# Local sprite sheets (third-party art stays out of git)
+infinite-zone/skins/local/

@@ -84,8 +84,12 @@ button[aria-pressed="true"] { color: var(--mute); text-decoration: line-through;
 .pad .jump { min-width: 96px; min-height: 80px; border-radius: 40px; background: var(--coral); border-color: var(--coral); color: #2a0d06; font: 700 18px var(--ui); letter-spacing: 0.1em; }
 @media (pointer: coarse) { .pad { display: flex; } }
 
-.deck { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-@media (max-width: 860px) { .deck { grid-template-columns: 1fr; } }
+.deck { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 760px) { .deck { grid-template-columns: 1fr; } }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.filebtn { display: inline-flex; align-items: center; min-height: 40px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--teal); color: var(--teal); font-weight: 700; letter-spacing: 0.04em; cursor: pointer; }
+.filebtn:focus-within { outline: 2px solid var(--teal); outline-offset: 2px; }
+.note { font-size: 13px; }
 .panel { min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 10px; align-content: start; }
 .panel h3 { margin: 0; font: 400 15px/1.2 var(--display); letter-spacing: 0.02em; color: var(--text); }
 .panel p { margin: 0; color: var(--mute); font-size: 14px; }
@@ -191,6 +195,15 @@ button[aria-pressed="true"] { color: var(--mute); text-decoration: line-through;
       <div id="carts"></div>
     </div>
     <div class="panel">
+      <h3>Character skin</h3>
+      <p>Load a sprite sheet and its atlas .json from your computer. It stays in this browser and is never uploaded. Map a raw rip with <code>tools/slice.py</code>.</p>
+      <div class="row" style="justify-content:flex-start">
+        <label class="filebtn">Load sheet<input type="file" id="skin-file" class="vh" accept="image/png,image/gif,.json,application/json" multiple></label>
+        <button id="skin-reset" type="button">Built-in runner</button>
+      </div>
+      <p class="note" id="skin-status">Using the built-in runner</p>
+    </div>
+    <div class="panel">
       <h3>Controls</h3>
       <dl class="keys">
         <dt>← →</dt><dd>Run (also A / D, d-pad)</dd>
@@ -207,8 +220,9 @@ button[aria-pressed="true"] { color: var(--mute); text-decoration: line-through;
       <ol class="flow">
         <li>The seed and a segment index pick one production from the grammar.</li>
         <li>The production writes terrain into 128×128 chunks with two collision layers, so loops work.</li>
-        <li>Gaps and platforms are spaced from the physics table, so mods that change gravity stay fair.</li>
-        <li>A reference bot plays 100 seeds per test run. Any production it can't clear fails the build.</li>
+        <li>The generator tracks the speed you'll be carrying. Before any hazard it adds a climb, so every hazard is on screen at least half a second.</li>
+        <li>Falling into a gap drops you to a lower route with a spring back up. Early zones cost time, never a life.</li>
+        <li>Two test players gate every change: an expert bot that must clear 100 seeds, and a runner with human reaction time that must never die in the first two zones.</li>
       </ol>
     </div>
   </section>

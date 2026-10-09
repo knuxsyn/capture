@@ -4,9 +4,8 @@
 import { WORLD } from '../core/constants.js';
 import { CHUNK_ROWS, MAT, DOWN, ALONG } from '../core/world.js';
 import { modeOf } from '../core/player.js';
+import { Camera, VIEW_W, VIEW_H } from '../core/camera.js';
 
-export const VIEW_W = 400;
-export const VIEW_H = 224;
 const C = WORLD.CHUNK;
 const TAU = Math.PI * 2;
 
@@ -89,8 +88,8 @@ export class Renderer {
     this.cache = new Map();
     this.pals = new Map();
     this.backs = new Map();
-    this.cam = { x: 0, y: 0 };
-    this.look = 0;
+    this.cam = new Camera();
+    this.skin = null; // SpriteSkin, or null for the built-in runner
     this.debug = false;
     this.core = null;
     this.zi = undefined;
@@ -107,10 +106,11 @@ export class Renderer {
   }
 
   snap() {
-    const p = this.core.player;
-    this.cam.x = Math.max(0, p.x - VIEW_W / 2);
-    this.cam.y = p.y - VIEW_H / 2 + 8;
-    this.look = 0;
+    this.cam.snap(this.core.player);
+  }
+
+  follow() {
+    this.cam.follow(this.core);
   }
 
   pal(zi) {
@@ -125,26 +125,6 @@ export class Renderer {
     const k = zi % zones.length;
     if (!this.backs.has(k)) this.backs.set(k, backdrop(zones[k], k));
     return this.backs.get(k);
-  }
-
-  follow() {
-    const core = this.core, p = core.player;
-    if (core.events.includes('respawn')) this.snap();
-    const target = Math.max(-48, Math.min(72, p.xsp * 10));
-    this.look += (target - this.look) * 0.04;
-    const tx = p.x - VIEW_W / 2 + this.look;
-    this.cam.x += Math.max(-24, Math.min(24, tx - this.cam.x));
-    this.cam.x = Math.max(0, this.cam.x);
-    if (p.dead) return;
-    let ty = p.y - VIEW_H / 2 + 8;
-    if (!p.ground) {
-      const dy = ty - this.cam.y;
-      ty = Math.abs(dy) < 32 ? this.cam.y : this.cam.y + dy - Math.sign(dy) * 32;
-    }
-    const v = !p.ground || Math.abs(p.gsp) > 8 ? 16 : 6;
-    this.cam.y += Math.max(-v, Math.min(v, ty - this.cam.y));
-    const seg = core.gen.at(p.x);
-    this.cam.y = Math.min(this.cam.y, seg.yLow + 150 - VIEW_H);
   }
 
   chunkCanvas(k) {
@@ -253,6 +233,7 @@ export class Renderer {
   player(ctx, p, frame) {
     for (const f of this.core.registry.hooks.drawPlayer) if (f(ctx, p, frame)) return;
     if (p.invuln > 0 && !p.hurt && (frame >> 2) & 1) return;
+    if (this.skin?.draw(ctx, p)) return;
     const x = Math.round(p.x), y = Math.round(p.y);
     ctx.save();
     ctx.translate(x, y);

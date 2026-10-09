@@ -6,6 +6,7 @@ import { createBot } from '../content/bot.js';
 import { Renderer } from './render.js';
 import { Input } from './input.js';
 import { Sfx } from './audio.js';
+import { SpriteSkin, loadImage, PRESETS } from './skin.js';
 import { moon } from '../../mods/moon.js';
 import { skyways } from '../../mods/skyways.js';
 import { glide } from '../../mods/glide.js';
@@ -186,6 +187,55 @@ function renderCarts() {
   }
 }
 
+// --- character skin -------------------------------------------------------
+// Sheets load from the viewer's own files and stay in this browser.
+
+const readAs = (file, how) => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => resolve(r.result);
+  r.onerror = () => reject(r.error);
+  r[how](file);
+});
+
+async function applySkin(src, atlas, save) {
+  const img = await loadImage(src);
+  atlas ??= PRESETS[`${img.naturalWidth}x${img.naturalHeight}`];
+  if (!atlas) throw new Error(`No layout is known for a ${img.naturalWidth}×${img.naturalHeight} sheet. Load its atlas .json with it.`);
+  renderer.skin = new SpriteSkin(img, atlas);
+  $('skin-status').textContent = `Using ${renderer.skin.name}`;
+  if (save) store.set('iz.skin', { src, atlas });
+}
+
+$('skin-file').addEventListener('change', async (e) => {
+  const files = [...e.target.files];
+  e.target.value = '';
+  const imgFile = files.find((f) => f.type.startsWith('image/'));
+  const jsonFile = files.find((f) => f.name.endsWith('.json'));
+  try {
+    if (!imgFile) throw new Error('Pick the sheet image (PNG or GIF), plus its atlas .json if you have one.');
+    const atlas = jsonFile ? JSON.parse(await readAs(jsonFile, 'readAsText')) : undefined;
+    await applySkin(await readAs(imgFile, 'readAsDataURL'), atlas, true);
+  } catch (err) {
+    $('skin-status').textContent = err.message;
+  }
+});
+
+$('skin-reset').addEventListener('click', () => {
+  renderer.skin = null;
+  store.set('iz.skin', null);
+  $('skin-status').textContent = 'Using the built-in runner';
+});
+
+async function restoreSkin() {
+  const saved = store.get('iz.skin', null);
+  try {
+    if (saved) return await applySkin(saved.src, saved.atlas, false);
+    // Local development: drop sheet.png + skin.json into skins/local/.
+    const res = await fetch('skins/local/skin.json');
+    if (res.ok) await applySkin('skins/local/sheet.png', await res.json(), false);
+  } catch { /* no saved or local skin */ }
+}
+
 // --- wiring ---------------------------------------------------------------
 
 input.bind(window, $('touch'));
@@ -223,5 +273,6 @@ $('seed').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preven
 document.addEventListener('visibilitychange', () => { if (document.hidden && mode === 'play') setMode('paused'); });
 
 renderCarts();
+restoreSkin();
 toTitle();
 requestAnimationFrame(tick);

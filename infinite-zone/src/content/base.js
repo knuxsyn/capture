@@ -11,9 +11,28 @@ const smooth = (t) => t * t * (3 - 2 * t);
 const UPHILL = 4;
 
 // ---------------------------------------------------------------- segments
-// Each production: { id, weight, minD, build(b) }. `b` is the Builder
-// (src/core/generator.js). Productions must leave b.cy at a walkable
-// surface; the next segment starts there.
+// Each production: { id, weight, minD, maxSpeed?, build(b) }. `b` is the
+// Builder (src/core/generator.js). Productions must leave b.cy at a
+// walkable surface; the next segment starts there.
+//
+// Fairness rules, measured by test/flow.mjs with a reaction-time runner:
+// - A production with hazards declares maxSpeed. Arriving faster, the
+//   generator inserts `brake` first so the hazard is on screen >= 0.5 s.
+// - Falling into a gap costs time, not a life: a catch floor and a spring
+//   lead back up. True bottomless pits appear only in single-jump gaps,
+//   from difficulty 0.55. Platform runs always have a catch floor.
+// - Rises in the running line are ramps, never walls.
+
+const HAZARD_SPEED = 7.5;
+
+// A lower route under a gap: floor, ring trail, and a spring at the far
+// wall strong enough to clear it.
+function catchFloor(b, x0, x1, floorY, ledgeY) {
+  for (let x = Math.round(x0); x < x1; x++) b.column(x, floorY);
+  const wall = floorY - ledgeY + 2 * b.P.standH;
+  b.spawn('spring', x1 - 24, floorY - 8, { power: b.springHeight(10) > wall ? 10 : 16 });
+  if (x1 - x0 > 160) b.ringLine(x0 + 48, floorY - 28, x1 - 72, floorY - 28, 3);
+}
 
 export const segments = [
   {
@@ -30,6 +49,19 @@ export const segments = [
       const x = b.cx, y = b.cy;
       b.flat(14 * S);
       b.spawn('post', x + 112, y - 24);
+    },
+  },
+  {
+    // Inserted by the generator, never rolled: a climb that turns excess
+    // speed into height (v^2 drops 2 * slp per px of rise above top speed).
+    id: 'brake',
+    build(b) {
+      const excess = b.v * b.v - b.P.top * b.P.top;
+      const rise = Math.min(b.cy - WORLD.Y_TOP, Math.ceil(excess / (2 * b.P.slp)) + 16);
+      const x = b.cx, y = b.cy;
+      if (rise > 0) b.slope(Math.max(12 * S, rise * UPHILL), -rise);
+      b.flat(10 * S);
+      b.ringLine(x + 64, y - 28 - rise * 0.15, b.cx - 64, b.cy - 28, 6);
     },
   },
   {
@@ -84,13 +116,15 @@ export const segments = [
     },
   },
   {
-    id: 'gap', weight: 1, minD: 0.08,
+    id: 'gap', weight: 1, minD: 0.06, maxSpeed: HAZARD_SPEED,
     build(b) {
       b.flat(b.rng.int(18, 24) * S);
       const w = Math.round(lerp(64, b.jumpRange() / 2, b.d) * b.rng.range(0.75, 1));
       const dy = Math.max(-32, b.room(b.rng.int(-2, 4) * S));
-      const x = b.cx, y = b.cy;
+      const x = b.cx, y = b.cy, land = y + dy;
       for (let k = 1; k <= 5; k++) b.ring(x + (w * k) / 6, y - 40 - 56 * Math.sin((Math.PI * k) / 6));
+      const pit = b.d >= 0.55 && b.rng.chance(0.35);
+      if (!pit) catchFloor(b, x, x + w, Math.max(y, land) + 128, land);
       b.gap(w, dy);
       b.flat(b.rng.int(12, 18) * S);
     },
@@ -98,26 +132,30 @@ export const segments = [
   {
     // Platform runs are tuned to the full-speed jump arc (b.jumpRange(),
     // ~356 px with base physics): each gap plus the next platform spans at
-    // least that, so a committed running jump always lands on wood.
-    id: 'platforms', weight: 0.7, minD: 0.25,
+    // least that, so a committed running jump lands on wood. Miss, and the
+    // catch floor below walks you back to the exit.
+    id: 'platforms', weight: 0.7, minD: 0.2, maxSpeed: HAZARD_SPEED,
     build(b) {
       b.flat(18 * S);
-      const yEntry = b.cy, n = b.rng.int(2, 3);
+      const yEntry = b.cy, n = b.rng.int(2, 3), x0 = b.cx;
       const span = Math.round(b.jumpRange()) + 12, lift = Math.min(48, b.jumpHeight() / 2);
-      let x = b.cx, y = b.cy;
+      let x = b.cx, y = b.cy, low = yEntry;
       for (let k = 0; k < n; k++) {
         const g = b.rng.int(4, 9) * S;
         const pw = span - g + b.rng.int(0, 2) * S;
         x += g;
         y = Math.min(yEntry + 48, Math.max(yEntry - 2 * lift, y - b.rng.range(-2 * S, lift)));
-        y = Math.round(y);
-        y = Math.max(WORLD.Y_TOP, y);
+        y = Math.max(WORLD.Y_TOP, Math.round(y));
+        low = Math.max(low, y);
         b.platform(x, y, pw);
         b.ringLine(x + 32, y - 24, x + pw - 32, y - 24, 4);
         x += pw;
       }
-      b.gap(x + b.rng.int(4, 8) * S - b.cx, 0);
-      b.cy = Math.max(WORLD.Y_TOP, Math.min(WORLD.Y_BOT, y + b.rng.int(-1, 2) * S));
+      const exit = x + b.rng.int(4, 8) * S;
+      const land = Math.max(WORLD.Y_TOP, Math.min(WORLD.Y_BOT, y + b.rng.int(-1, 2) * S));
+      catchFloor(b, x0, exit, Math.max(low, land) + 128, land);
+      b.gap(exit - b.cx, 0);
+      b.cy = land;
       b.track(b.cy);
       b.flat(24 * S);
     },
@@ -136,12 +174,15 @@ export const segments = [
     },
   },
   {
-    id: 'steps', weight: 0.7, minD: 0.1,
+    // Terraces: rises are ramps so speed carries you up; drops are ledges.
+    id: 'terraces', weight: 0.7, minD: 0.1,
     build(b) {
       b.flat(6 * S);
-      const n = b.rng.int(2, 4), dir = b.rng.chance(0.65) ? -1 : 1;
+      const n = b.rng.int(2, 4), up = b.rng.chance(0.65);
       for (let k = 0; k < n; k++) {
-        b.step(b.room(dir * Math.min(b.rng.int(2, 3) * S, Math.floor(b.jumpHeight() / 2))));
+        const h = b.room((up ? -1 : 1) * b.rng.int(2, 4) * S);
+        if (h < 0) b.slope(-h * UPHILL, h);
+        else b.step(h);
         b.flat(b.rng.int(6, 9) * S);
       }
     },
@@ -156,22 +197,22 @@ export const segments = [
     },
   },
   {
-    id: 'crawlers', weight: 0.9, minD: 0.05,
+    id: 'crawlers', weight: 0.9, minD: 0.03, maxSpeed: HAZARD_SPEED,
     build(b) {
-      const x = b.cx, len = b.rng.int(20, 32) * S;
+      const x = b.cx, len = b.rng.int(24, 34) * S;
       if (b.rng.chance(0.5)) b.flat(len);
       else b.hills(len, 2 * S, 1);
       const n = 1 + Math.floor(b.d * 2.99 * b.rng.next());
       for (let k = 0; k < n; k++) {
-        const ex = x + 96 + ((k + 0.5) * (len - 192)) / n;
+        const ex = x + 224 + ((k + 0.5) * (len - 320)) / n;
         b.spawn('crawler', ex, b.groundAt(ex) - 10, { dir: -1, range: 40 });
       }
     },
   },
   {
-    id: 'spikes', weight: 0.7, minD: 0.15,
+    id: 'spikes', weight: 0.7, minD: 0.33, maxSpeed: HAZARD_SPEED,
     build(b) {
-      b.flat(10 * S);
+      b.flat(16 * S);
       const x = b.cx, y = b.cy, n = b.rng.int(2, 4);
       b.flat(n * S + 12 * S);
       b.spawn('spikes', x + 32 + n * 8, y - 8, { n, w: n * 8 });
@@ -245,6 +286,7 @@ export const objects = {
       p.angle = 0;
       p.y = o.y - o.h - p.hr;
       p.ysp = -o.power;
+      p.ext.sprung = true;
       o.anim = 10;
       o.cool = 10;
       core.events.push('spring');
@@ -410,4 +452,7 @@ export const base = {
   segments,
   objects,
   zones,
+  hooks: {
+    onLand(p) { p.ext.sprung = false; },
+  },
 };

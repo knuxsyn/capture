@@ -246,6 +246,7 @@ export class Player {
 
   airStep(inp, w, ev) {
     const P = this.P;
+    this.pushing = false;
     let handled = false;
     for (const f of this.hooks.beforeAir) {
       if (f(this, inp, ev)) { handled = true; break; }
