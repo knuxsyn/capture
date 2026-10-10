@@ -1,6 +1,6 @@
 // The core: a headless, deterministic simulation. No DOM. One call to
 // step(input) advances one 60 Hz frame. Content arrives through lockOn().
-import { PHYSICS, WORLD, ACTS } from './constants.js';
+import { PHYSICS, WORLD, ACTS, POWERS, AIR, SKIM, POWER_TIME, SUPER_RINGS } from './constants.js';
 import { hashSeed, createRng, mix } from './rng.js';
 import { World } from './world.js';
 import { Player } from './player.js';
@@ -23,6 +23,27 @@ export function createCore({ seed = 'zone', carts = [] } = {}) {
   let gen = null;
   let prevJump = false;
   const zoneCache = new Map();
+  const physicsCache = new Map();
+
+  // The physics table in effect: cart physics, then super or shoes, then
+  // water on top. Plain running returns the registry table itself.
+  function physicsFor(wet, shoes, sup) {
+    const key = (wet ? 1 : 0) | (shoes ? 2 : 0) | (sup ? 4 : 0);
+    if (!key) return registry.physics;
+    if (!physicsCache.has(key)) {
+      const P = { ...registry.physics };
+      const apply = (m) => {
+        for (const [k, v] of Object.entries(m.mul ?? {})) P[k] *= v;
+        for (const [k, v] of Object.entries(m.add ?? {})) P[k] += v;
+        Object.assign(P, m.set ?? {});
+      };
+      if (sup) apply(POWERS.super);
+      else if (shoes) apply(POWERS.shoes);
+      if (wet) apply(POWERS.water);
+      physicsCache.set(key, Object.freeze(P));
+    }
+    return physicsCache.get(key);
+  }
 
   const core = {
     seed: typeof seed === 'number' ? seed >>> 0 : hashSeed(seed),
@@ -37,6 +58,8 @@ export function createCore({ seed = 'zone', carts = [] } = {}) {
     actIndex: 0,
     state: 'boot',
     events: [],
+    shield: null, // null | 'basic' | 'fire' | 'lightning' | 'bubble'
+    power: { invinc: 0, shoes: 0, super: false },
     checkpoint: null,
     deadT: 0,
     world: null,
@@ -86,11 +109,28 @@ export function createCore({ seed = 'zone', carts = [] } = {}) {
       core.frame++;
       if (core.state !== 'play') return core;
 
-      const p = core.player;
+      const p = core.player, world = core.world, pw = core.power;
       gen.ensure(p.x + 1600);
       p.px = p.x;
       p.py = p.y;
-      p.update(inp, core.world, ev);
+
+      // Super: 50 rings, then up + jump in mid-air. The press is consumed.
+      if (!p.dead && !p.ground && inp.up && inp.jumpPressed && !pw.super && core.rings >= SUPER_RINGS) {
+        pw.super = true;
+        inp.jumpPressed = false;
+        ev.push('super');
+      }
+      world.skim = !p.dead && !p.wet && Math.abs(p.xsp) >= SKIM;
+      p.P = physicsFor(p.wet, pw.shoes > 0, pw.super);
+      p.update(inp, world, ev);
+      if (!p.dead) liquids(p, ev);
+      if (pw.invinc > 0) pw.invinc--;
+      if (pw.shoes > 0) pw.shoes--;
+      if (pw.super && core.frame % 60 === 0 && --core.rings <= 0) {
+        core.rings = 0;
+        pw.super = false;
+        ev.push('unsuper');
+      }
       core.objects.update(core);
       for (const f of registry.hooks.onStep) f(core, inp);
 
@@ -125,16 +165,36 @@ export function createCore({ seed = 'zone', carts = [] } = {}) {
       }
     },
 
-    // Damage from a source at x. Rings shield you; no rings, no shield.
-    hurt(srcX) {
+    // Invincible or super: nothing hurts, and touching an enemy destroys it.
+    mighty() {
+      return core.power.invinc > 0 || core.power.super;
+    },
+
+    // An item from a monitor.
+    giveItem(kind) {
+      if (kind === 'rings') core.addRings(10);
+      else if (kind === 'life') { core.lives++; core.events.push('life'); }
+      else if (kind === 'invincible') core.power.invinc = POWER_TIME;
+      else if (kind === 'shoes') core.power.shoes = POWER_TIME;
+      else core.shield = kind;
+      core.events.push('item');
+    },
+
+    // Damage from a source at x. A shield takes the hit (fire shrugs off
+    // fire); otherwise rings scatter; with no rings, you die.
+    hurt(srcX, kind) {
       const p = core.player, P = registry.physics;
-      if (p.dead || p.hurt || p.invuln > 0) return false;
-      if (core.rings === 0) {
+      if (p.dead || p.hurt || p.invuln > 0 || core.mighty()) return false;
+      if (kind === 'fire' && core.shield === 'fire') return false;
+      if (core.shield) {
+        core.shield = null;
+      } else if (core.rings === 0) {
         core.kill(false);
         return true;
+      } else {
+        scatter(Math.min(core.rings, 32));
+        core.rings = 0;
       }
-      scatter(Math.min(core.rings, 32));
-      core.rings = 0;
       p.ground = false;
       p.rolling = false;
       p.spindash = false;
@@ -149,6 +209,7 @@ export function createCore({ seed = 'zone', carts = [] } = {}) {
       return true;
     },
 
+    // pit: true for a fall, 'drown' for running out of air.
     kill(pit) {
       const p = core.player;
       if (p.dead) return;
@@ -156,8 +217,11 @@ export function createCore({ seed = 'zone', carts = [] } = {}) {
       p.ground = false;
       p.xsp = 0;
       p.ysp = pit ? 0 : -7;
-      core.deadT = pit ? 30 : 0;
+      core.deadT = pit === true ? 30 : 0;
+      core.shield = null;
+      core.power.super = false;
       core.events.push('die');
+      if (pit === 'drown') core.events.push('drown');
     },
 
     // Zone z's identity: palette, patterns, production mix. Generated from
@@ -199,6 +263,41 @@ export function createCore({ seed = 'zone', carts = [] } = {}) {
     }
   }
 
+  // Water: entering halves speed, leaving doubles the climb out, and air
+  // runs down unless you surface, grab a bubble, or wear the bubble shield.
+  // Lava burns (unless fire shield or invincible) and throws you upward.
+  function liquids(p, ev) {
+    const l = core.world.liquidAt(p.x);
+    const wet = !!l && l.kind === 'water' && p.y > l.y;
+    if (wet && !p.wet) {
+      p.xsp *= 0.5;
+      p.ysp *= 0.25;
+      if (p.ground) p.gsp *= 0.5;
+      ev.push('splash');
+    } else if (!wet && p.wet) {
+      if (p.ysp < 0 && p.ysp > -4) p.ysp *= 2; // a jump out of the water carries; a spring is already fast
+      ev.push('splash');
+    }
+    p.wet = wet;
+    if (wet && core.shield !== 'bubble' && !core.power.super) {
+      p.air--;
+      if (p.air === 1500 || p.air === 1200 || p.air === 900) ev.push('airwarn');
+      if (p.air <= 720 && p.air % 120 === 0) ev.push('aircount');
+      if (p.air <= 0) core.kill('drown');
+    } else {
+      p.air = AIR;
+    }
+    if (l && l.kind === 'lava' && p.y + p.hr > l.y + 4) {
+      // Knocked forward, not back into the bank. A bounce that doesn't hurt
+      // (still flashing) hands control back, or you could bob here forever.
+      if (core.shield === 'fire' || core.mighty() || !core.hurt(p.x - p.facing, 'fire')) p.hurt = false;
+      p.ground = false;
+      p.rolling = false;
+      p.ysp = -7;
+      ev.push('sizzle');
+    }
+  }
+
   function respawn() {
     core.lives--;
     if (core.lives <= 0) {
@@ -208,7 +307,10 @@ export function createCore({ seed = 'zone', carts = [] } = {}) {
     }
     const c = core.checkpoint;
     core.player.reset(c.x, c.y);
+    core.player.P = registry.physics;
     core.rings = 0;
+    core.shield = null;
+    core.power = { invinc: 0, shoes: 0, super: false };
     core.deadT = 0;
     core.events.push('respawn');
   }

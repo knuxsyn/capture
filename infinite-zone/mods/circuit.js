@@ -10,6 +10,7 @@
 import { WORLD } from '../src/core/constants.js';
 import { MAT, BOTH, TOP, px } from '../src/core/world.js';
 import { catchFloor, HAZARD_SPEED, objects as baseObjects } from '../src/content/base.js';
+import { gimmickSegments, gimmickObjects, gimmickHooks, maybeMonitor } from './gimmicks.js';
 
 const S = WORLD.BLOCK;
 const TAU = Math.PI * 2;
@@ -50,6 +51,7 @@ const segments = [
       if (!(t >= 0.5 && b.rng.chance(0.35))) catchFloor(b, x, x + w, Math.max(y, land) + 144, land);
       b.gap(w, dy);
       b.flat(b.rng.int(20, 26) * S);
+      maybeMonitor(b, b.cx - 96, b.cy, 0.25);
     },
   },
   {
@@ -95,6 +97,7 @@ const segments = [
       b.mat = MAT.GROUND;
       const len = b.rng.int(14, 20) * S;
       b.flat(len);
+      if (rise < 0) maybeMonitor(b, b.cx - 64, b.cy, 0.55, 'reward');
       if (rise < 0) b.ringLine(x + 112, b.cy - 28, x + 96 + len - 32, b.cy - 28, 5);
     },
   },
@@ -157,6 +160,7 @@ const segments = [
         b.mat = MAT.GROUND;
         b.step(h);
         b.ringLine(x + 12, y - h - 24, x + w - 12, y - h - 24, 3);
+        if (k === n - 1) maybeMonitor(b, x + w / 2, y - h, 0.45, 'reward');
         if (k < n - 1) b.flat(Math.round(b.rng.range(lerp(128, 96, t), lerp(224, 400, t))));
       }
       b.flat(16 * S);
@@ -332,7 +336,7 @@ const THEMES = [
   {
     theme: 'coast', name: 'Coral Drift', pattern: 'waves', skyline: 'sea',
     amp: 1.3, stretch: 1.25, loopBias: 1,
-    weights: { chasm: 1.5, stacks: 1.1, hills: 1.2, loop: 1, runway: 0.6, halfpipe: 0.7, drop: 0.5, crawlers: 0.6, springboard: 0.5, slope: 0.6, skyway: 0.8 },
+    weights: { lagoon: 1.4, vines: 1.1, chasm: 1, stacks: 0.8, garden: 0.8, hills: 1, loop: 0.9, halfpipe: 0.5, drop: 0.4, springboard: 0.3, slope: 0.4, runway: 0.3, skyway: 0.6 },
     moods: [
       {
         mood: 'day', sky: ['#1f6fb2', '#9fe3ec'], far: '#5aa9c9', mid: '#2f8f7a', cloud: '#ffffff', water: '#2b8fb8',
@@ -349,7 +353,7 @@ const THEMES = [
   {
     theme: 'canyon', name: 'Ember Canyon', pattern: 'strata', skyline: 'canyon',
     amp: 1.1, stretch: 1, loopBias: 0,
-    weights: { cliff: 1.5, rockwall: 1.2, drop: 1.1, crawlers: 0.8, terraces: 0.7, loop: 0.6, halfpipe: 0.5, slope: 0.6, runway: 0.4, crumble: 0.4 },
+    weights: { lavapit: 1.3, cliff: 1.2, rockwall: 1, rhinos: 1.1, vines: 0.6, crushers: 0.5, drop: 0.9, terraces: 0.5, loop: 0.5, halfpipe: 0.4, slope: 0.5, runway: 0.2, crumble: 0.3 },
     moods: [
       {
         mood: 'dusk', sky: ['#3a1430', '#ff8a4c'], far: '#8a3b3b', mid: '#5c2a2a', cloud: '#ffc49a',
@@ -366,7 +370,7 @@ const THEMES = [
   {
     theme: 'ruins', name: 'Static Ruins', pattern: 'bricks', skyline: 'ruins',
     amp: 0.9, stretch: 0.95, loopBias: -1,
-    weights: { towers: 1.4, crumble: 1.3, gauntlet: 1.1, rockwall: 0.7, chasm: 0.6, loop: 0.6, platforms: 0.6, spikes: 0.5, springboard: 0.4, runway: 0.3 },
+    weights: { towers: 1.1, crumble: 1, balloons: 1.1, crushers: 1, pinball: 0.8, orbinauts: 0.9, spikers: 0.8, gauntlet: 0.6, rockwall: 0.5, chasm: 0.4, loop: 0.5, platforms: 0.3, runway: 0.2 },
     moods: [
       {
         mood: 'night', stars: true, sky: ['#05060f', '#1b2350'], far: '#232a52', mid: '#161a36', cloud: '#3a4270', glow: '#7cf7ff',
@@ -402,7 +406,8 @@ export const circuit = {
   name: 'Echidna Circuit',
   blurb: 'Three zones built for glide and climb, looping forever and harder each lap.',
   requires: ['glide'],
-  segments,
-  objects,
+  segments: [...segments, ...gimmickSegments],
+  objects: { ...objects, ...gimmickObjects },
+  hooks: gimmickHooks,
   zoneGen,
 };

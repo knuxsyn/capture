@@ -16,7 +16,9 @@ export const SOLID_B = 2;
 export const BOTH = 3;
 export const TOP = 4;
 // CRACKED: breakable rock (render + climb rules). CRUMBLE: platforms that fall.
-export const MAT = Object.freeze({ GROUND: 0, ROCK: 1, WOOD: 2, METAL: 3, CRACKED: 4, CRUMBLE: 5 });
+// METAL: solids an object owns and draws itself (monitors, crushers).
+// SKIM: the water surface film, solid only while world.skim is set.
+export const MAT = Object.freeze({ GROUND: 0, ROCK: 1, WOOD: 2, METAL: 3, CRACKED: 4, CRUMBLE: 5, SKIM: 6 });
 export const px = (solid, mat = 0) => solid | (mat << 4);
 
 // Ground modes: 0 floor, 1 right wall, 2 ceiling, 3 left wall.
@@ -30,6 +32,24 @@ export class World {
   constructor() {
     this.chunks = new Map();
     this.dirty = new Set();
+    // Liquids: { x0, x1, y, kind: 'water' | 'lava' }, kept in x order.
+    this.liquids = [];
+    // The water film is solid only while this is set (the core sets it
+    // when the player moves fast enough to skim the surface).
+    this.skim = false;
+  }
+
+  addLiquid(x0, x1, y, kind) {
+    this.liquids.push({ x0, x1, y, kind });
+    this.liquids.sort((a, b) => a.x0 - b.x0);
+  }
+
+  liquidAt(x) {
+    for (const l of this.liquids) {
+      if (l.x0 > x) return null;
+      if (x < l.x1) return l;
+    }
+    return null;
   }
 
   key(cx, cy) { return cx * ROWS + cy; }
@@ -77,7 +97,8 @@ export class World {
 
   solid(x, y, mask, top) {
     const v = this.get(x, y);
-    return (v & mask) !== 0 && (top || (v & TOP) === 0);
+    if ((v & mask) === 0 || (!top && (v & TOP) !== 0)) return false;
+    return v >> 4 !== MAT.SKIM || this.skim;
   }
 
   // Cast a sensor from (x, y) along (dx, dy). Returns { dist, x, y } where
@@ -138,6 +159,7 @@ export class World {
 
   // Drop chunks wholly left of xMin.
   prune(xMin) {
+    this.liquids = this.liquids.filter((l) => l.x1 >= xMin);
     const cmin = Math.floor(xMin / WORLD.CHUNK);
     for (const k of this.chunks.keys()) {
       if (Math.floor(k / ROWS) < cmin) {

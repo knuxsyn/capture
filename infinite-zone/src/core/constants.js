@@ -40,5 +40,17 @@ export const WORLD = Object.freeze({
   PIT: 360,     // falling this far below a segment's lowest surface kills
 });
 
+// Powers and liquids, S3K-style. Each is a set of multipliers or overrides
+// applied on top of the cart-adjusted physics table.
+export const POWERS = Object.freeze({
+  water: { mul: { acc: 0.5, dec: 0.5, frc: 0.5, top: 0.5, air: 0.5, rollFrc: 0.5, jmp: 3.5 / 6.5, jmpCut: 0.5 }, set: { grv: 0.0625 } },
+  shoes: { mul: { acc: 2, frc: 2, top: 2, air: 2, rollFrc: 2 } },
+  super: { mul: { acc: 4, dec: 2, air: 4 }, set: { top: 10 }, add: { jmp: 1.5 } },
+});
+export const AIR = 1800;        // frames of air underwater (30 s)
+export const SKIM = 6.5;        // run on water above this |xsp|
+export const POWER_TIME = 1200; // invincibility and speed shoes (20 s)
+export const SUPER_RINGS = 50;
+
 export const ACT_LEN = 16; // segments per act
 export const ACTS = 2;     // acts per zone; a zone keeps one biome

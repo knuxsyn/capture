@@ -1,6 +1,7 @@
 // The base cartridge. Everything the game ships with is content locked on
 // the same way a mod would be: segments (the grammar), object types, zones.
 import { WORLD } from '../core/constants.js';
+import { MAT, BOTH, px } from '../core/world.js';
 
 const S = WORLD.BLOCK;
 const TAU = Math.PI * 2;
@@ -251,9 +252,129 @@ function collect(o, core) {
   core.events.push('ring');
 }
 
+// Item monitors are solid boxes (MAT.METAL pixels the object draws). A
+// curled, gliding or invincible player breaks one from any side; landing
+// on it bounces you. Kinds: rings, shield, fire, lightning, bubble,
+// invincible, shoes, life.
+export function placeMonitor(b, x, groundY, kind) {
+  b.world.fillRect(x - 14, groundY - 30, x + 14, groundY, px(BOTH, MAT.METAL));
+  return b.spawn('monitor', x, groundY - 15, { kind, x0: x - 14, y0: groundY - 30, x1: x + 14, y1: groundY });
+}
+
+const ICON = {
+  rings: ['#f2b632', 'o'], shield: ['#6fb8ff', 'S'], fire: ['#ff6a2a', 'F'], lightning: ['#ffe14a', 'L'],
+  bubble: ['#7ff0ff', 'B'], invincible: ['#ffffff', '*'], shoes: ['#ff4a6a', '>'], life: ['#7cf77c', '1'],
+};
+
+function drawIcon(ctx, kind, x, y) {
+  const [c, glyph] = ICON[kind] ?? ICON.rings;
+  ctx.fillStyle = c;
+  if (kind === 'rings') {
+    ctx.lineWidth = 2; ctx.strokeStyle = c;
+    ctx.beginPath(); ctx.ellipse(x, y, 4, 5, 0, 0, TAU); ctx.stroke();
+  } else if (['shield', 'fire', 'lightning', 'bubble'].includes(kind)) {
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath(); ctx.arc(x, y, 6, 0, TAU); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#16121c';
+    ctx.font = 'bold 8px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(glyph, x, y + 0.5);
+  } else {
+    ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(glyph, x, y + 0.5);
+  }
+}
+
 export const objects = {
+  monitor: {
+    w: 14, h: 15,
+    update(o, core) {
+      const p = core.player;
+      // A spindash released flush against the box loses its speed to the
+      // push sensor this frame; last frame's rev restores it.
+      const released = o.psd && !p.spindash && p.ground;
+      o.psd = p.spindash;
+      o.prev = p.rev;
+      const strong = released || p.curled || p.spindash || p.ext.gliding || core.mighty();
+      const ex = p.P.pushR + Math.abs(p.xsp) + 3;
+      const down = p.hr + Math.max(0, p.ysp) + 3, up = p.hr + Math.max(0, -p.ysp) + 3;
+      if (!strong || p.dead || p.x + ex < o.x0 || p.x - ex > o.x1 || p.y + down < o.y0 || p.y - up > o.y1) return;
+      core.world.fillRect(o.x0, o.y0, o.x1, o.y1, 0);
+      o.alive = false;
+      if (released) { p.gsp = p.facing * (p.P.dashBase + Math.floor(o.prev) / 2); p.rolling = true; p.curl(); }
+      if (!p.ground && p.ysp > 0 && p.y < o.y0) p.ysp = -Math.max(p.ysp, 3);
+      core.score += 10;
+      core.giveItem(o.kind);
+      core.objects.spawn('fx', o.x, o.y, { kind: 'pop', life: 20 });
+      core.objects.spawn('itemfx', o.x, o.y - 6, { kind: o.kind, life: 40 });
+    },
+    draw(ctx, o, f) {
+      ctx.fillStyle = '#3a3f52';
+      ctx.fillRect(o.x0, o.y0, o.x1 - o.x0, o.y1 - o.y0);
+      ctx.fillStyle = '#c9ced8';
+      ctx.fillRect(o.x0 + 2, o.y0 + 2, o.x1 - o.x0 - 4, 2);
+      ctx.fillStyle = (f >> 3) & 1 ? '#10141f' : '#18223a';
+      ctx.fillRect(o.x0 + 4, o.y0 + 5, o.x1 - o.x0 - 8, 17);
+      if ((f & 15) < 13) drawIcon(ctx, o.kind, o.x, o.y0 + 13);
+      ctx.fillStyle = '#20232e';
+      ctx.fillRect(o.x0 + 2, o.y1 - 6, o.x1 - o.x0 - 4, 6);
+    },
+  },
+
+  itemfx: {
+    w: 0, h: 0,
+    update(o) { o.y -= 0.6; if (--o.life <= 0) o.alive = false; },
+    draw(ctx, o) { drawIcon(ctx, o.kind, o.x, o.y); },
+  },
+
+  // A projectile with gravity. Elemental shields knock it away.
+  shot: {
+    w: 5, h: 5,
+    update(o, core) {
+      if (--o.life <= 0) { o.alive = false; return; }
+      o.ysp += o.grav ?? 0;
+      o.x += o.xsp;
+      o.y += o.ysp;
+    },
+    touch(o, p, core) {
+      if (['fire', 'lightning', 'bubble'].includes(core.shield)) {
+        o.xsp = Math.sign(o.x - p.x || 1) * 4;
+        o.ysp = -4;
+        o.grav = 0.2;
+        return;
+      }
+      if (core.hurt(o.x, o.fire ? 'fire' : undefined)) o.alive = false;
+    },
+    draw(ctx, o, f) {
+      ctx.fillStyle = o.fire ? ((f >> 1) & 1 ? '#ffd23a' : '#ff6a2a') : '#d6455b';
+      ctx.beginPath(); ctx.arc(o.x, o.y, o.r ?? 4, 0, TAU); ctx.fill();
+      if (!o.fire) {
+        ctx.fillStyle = '#f4f1e8';
+        for (let i = 0; i < 4; i++) {
+          const a = (i * Math.PI) / 2 + f * 0.2;
+          ctx.fillRect(o.x + Math.cos(a) * 5 - 1, o.y + Math.sin(a) * 5 - 1, 2, 2);
+        }
+      }
+    },
+  },
+
   ring: {
     w: 6, h: 6,
+    // The lightning shield pulls nearby rings in, S3K-style: each axis
+    // accelerates toward you, harder when the ring is moving away.
+    update(o, core) {
+      const p = core.player;
+      if (!o.magnet) {
+        if (core.shield !== 'lightning' || Math.abs(o.x - p.x) > 80 || Math.abs(o.y - p.y) > 80) return;
+        o.magnet = true;
+        o.vx = o.vy = 0;
+      }
+      const ax = Math.sign(p.x - o.x), ay = Math.sign(p.y - o.y);
+      o.vx += ax * (ax === Math.sign(o.vx) ? 0.1875 : 0.75);
+      o.vy += ay * (ay === Math.sign(o.vy) ? 0.1875 : 0.75);
+      o.x += o.vx;
+      o.y += o.vy;
+    },
     touch: (o, p, core) => collect(o, core),
     draw: (ctx, o, f) => drawRing(ctx, o.x, o.y, f),
   },
@@ -349,7 +470,7 @@ export const objects = {
       if (h) o.y += h.dist;
     },
     touch(o, p, core) {
-      if (p.curled || p.spindash) {
+      if (p.curled || p.spindash || core.mighty()) {
         o.alive = false;
         core.score += 100;
         core.objects.spawn('fx', o.x, o.y, { kind: 'pop', life: 20 });
