@@ -71,6 +71,26 @@ export class Sfx {
       case 'life': [523, 659, 784, 1047].forEach((f, i) => this.tone('square', f, f, 0.12, 0.04, i * 0.09)); break;
       case 'zone': [392, 523, 659, 784].forEach((f, i) => this.tone('triangle', f, f, 0.22, 0.05, i * 0.11)); break;
       case 'over': [392, 330, 262, 196].forEach((f, i) => this.tone('triangle', f, f, 0.3, 0.05, i * 0.18)); break;
+      case 'splash': this.noise(0.3, 0.08, 700); this.tone('sine', 420, 120, 0.25, 0.04); break;
+      case 'gulp': this.tone('sine', 300, 760, 0.14, 0.06); break;
+      case 'airwarn': [880, 880].forEach((f, i) => this.tone('triangle', f, f, 0.08, 0.05, i * 0.12)); break;
+      case 'aircount': {
+        const k = 1 - (core?.player.air ?? 720) / 720;
+        [0, 0.1, 0.2].forEach((d, i) => this.tone('square', 330 + k * 300 + i * 40, 330 + k * 300 + i * 40, 0.07, 0.035, d));
+        break;
+      }
+      case 'drown': this.tone('sine', 620, 70, 0.9, 0.06); this.noise(0.5, 0.05, 500); break;
+      case 'item': [659, 880, 1175].forEach((f, i) => this.tone('triangle', f, f, 0.1, 0.05, i * 0.06)); break;
+      case 'super':
+        this.tone('sawtooth', 180, 1600, 0.6, 0.04);
+        [523, 659, 784, 1047].forEach((f, i) => this.tone('triangle', f, f, 0.3, 0.04, 0.35 + i * 0.05));
+        break;
+      case 'unsuper': this.tone('triangle', 900, 220, 0.4, 0.05); break;
+      case 'bump': this.tone('square', 1300, 700, 0.09, 0.04); this.tone('sine', 1950, 1950, 0.06, 0.03); break;
+      case 'slam': this.noise(0.25, 0.1, 260); this.tone('square', 120, 40, 0.2, 0.05); break;
+      case 'crush': this.noise(0.45, 0.12, 180); break;
+      case 'grab': this.tone('triangle', 480, 660, 0.06, 0.05); break;
+      case 'sizzle': this.noise(0.35, 0.06, 3200); break;
       default: break;
     }
   }

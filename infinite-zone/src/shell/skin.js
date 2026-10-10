@@ -17,20 +17,22 @@
 // point within a frame. Missing animations fall back along FALLBACK.
 
 export const ANIMS = ['idle', 'bored', 'lookup', 'balance', 'walk', 'run', 'dash', 'roll', 'spindash', 'skid', 'push', 'crouch',
-  'spring', 'fall', 'glide', 'glideTurn', 'drop', 'glideSlide', 'getUp', 'climb', 'climbUp', 'hurt', 'die'];
+  'spring', 'fall', 'glide', 'glideTurn', 'drop', 'glideSlide', 'getUp', 'climb', 'climbUp', 'hang', 'transform', 'hurt', 'die'];
 
 const FALLBACK = {
   dash: 'run', run: 'walk', walk: 'idle', fall: 'walk', spring: 'fall', skid: 'walk',
   push: 'walk', crouch: 'idle', spindash: 'roll', hurt: 'fall', die: 'hurt', roll: 'idle', glide: 'fall',
   bored: 'idle', lookup: 'idle', balance: 'idle', glideTurn: 'glide', drop: 'fall', glideSlide: 'glide',
-  getUp: 'crouch', climb: 'fall', climbUp: 'climb',
+  getUp: 'crouch', climb: 'fall', climbUp: 'climb', hang: 'spring', transform: 'spring',
 };
 
 // Which animation a player state shows, S3K-style.
 export function animOf(p) {
   if (p.dead) return 'die';
   if (p.hurt) return 'hurt';
+  if (p.morph > 0) return 'transform';
   const g = p.ext;
+  if (g.swing) return 'hang';
   if (g.ledge > 0) return 'climbUp';
   if (g.climbing) return 'climb';
   if (g.gliding) return g.turn > 0 ? 'glideTurn' : 'glide';

@@ -118,11 +118,13 @@ export function createCore({ seed = 'zone', carts = [] } = {}) {
       if (!p.dead && !p.ground && inp.up && inp.jumpPressed && !pw.super && core.rings >= SUPER_RINGS) {
         pw.super = true;
         inp.jumpPressed = false;
+        p.morph = 24; // hang in the air while transforming, as S3K does
         ev.push('super');
       }
       world.skim = !p.dead && !p.wet && Math.abs(p.xsp) >= SKIM;
       p.P = physicsFor(p.wet, pw.shoes > 0, pw.super);
-      p.update(inp, world, ev);
+      if (p.morph > 0) { p.morph--; p.xsp = p.ysp = 0; }
+      else p.update(inp, world, ev);
       if (!p.dead) liquids(p, ev);
       if (pw.invinc > 0) pw.invinc--;
       if (pw.shoes > 0) pw.shoes--;

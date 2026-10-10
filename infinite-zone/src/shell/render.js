@@ -6,6 +6,7 @@ import { CHUNK_ROWS, MAT, DOWN, ALONG } from '../core/world.js';
 import { modeOf } from '../core/player.js';
 import { Camera, VIEW_W, VIEW_H } from '../core/camera.js';
 import { createRng, mix } from '../core/rng.js';
+import { Effects } from './effects.js';
 
 const C = WORLD.CHUNK;
 const TAU = Math.PI * 2;
@@ -246,6 +247,7 @@ export class Renderer {
 
   attach(core) {
     this.core = core;
+    this.fx = new Effects(core);
     this.cache.clear();
     this.pals.clear();
     this.backs.clear();
@@ -258,8 +260,10 @@ export class Renderer {
     this.cam.snap(this.core.player);
   }
 
+  // Once per simulation frame.
   follow() {
     this.cam.follow(this.core);
+    this.fx.step();
   }
 
   pal(zi) {
@@ -292,7 +296,8 @@ export class Renderer {
       const wob = Math.round(Math.sin(wx * 0.045) * 3 + Math.sin(wx * 0.013) * 5);
       for (let y = 0; y < C; y++) {
         const v = data[(y << 7) | x];
-        if (!(v & 3)) { run = 0; continue; }
+        // Skim films and object solids (monitors, pistons) draw themselves.
+        if (!(v & 3) || v >> 4 === MAT.SKIM || v >> 4 === MAT.METAL) { run = 0; continue; }
         const d = run++;
         const wy = y0 + y, mat = v >> 4;
         let c;
@@ -361,9 +366,17 @@ export class Renderer {
       if (o.y < camY - 64 || o.y > camY + VIEW_H + 64) continue;
       types.get(o.type).draw?.(ctx, o, frame);
     }
+    this.fx.back(ctx, frame);
+    const tinted = this.fx.tint(ctx, frame);
     this.player(ctx, core.player, frame);
+    if (tinted) ctx.filter = 'none';
+    this.fx.front(ctx, frame);
+    this.fx.liquids(ctx, camX, camY, frame);
+    this.fx.particles(ctx);
+    this.fx.air(ctx, frame);
     if (this.debug) this.overlay(ctx, camX, camY);
     ctx.restore();
+    this.fx.status(ctx, frame);
   }
 
   sky(z, zi, camX, camY, alpha) {

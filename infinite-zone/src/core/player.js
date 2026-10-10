@@ -42,7 +42,7 @@ export class Player {
       ground: false, curled: false, rolling: false, jumping: false,
       spindash: false, rev: 0, crouch: false, pushing: false,
       layer: 0, lock: 0, facing: 1, hurt: false, invuln: 0, dead: false,
-      mode: 0, ext: {}, lookUp: false, edge: false, idleT: 0, wet: false, air: 1800,
+      mode: 0, ext: {}, lookUp: false, edge: false, idleT: 0, wet: false, air: 1800, morph: 0,
     });
   }
 

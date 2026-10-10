@@ -57,7 +57,7 @@ export const gimmickSegments = [
       const D = b.rng.int(7, 11) * S;
       for (let x = x0; x < x0 + W; x++) b.column(x, y + D);
       b.world.fillRect(x0, surf, x0 + W, surf + 16, px(BOTH | TOP, MAT.SKIM));
-      b.world.addLiquid(x0, x0 + W, surf, 'water');
+      b.world.addLiquid(x0, x0 + W, surf, 'water', y + D);
       for (let x = x0 + 200; x < x0 + W - 80; x += 360) b.spawn('vent', x, y + D - 4, { period: 150 });
       for (let k = 0; k < Math.round(t * 3); k++) {
         b.spawn('jawz', x0 + W * (0.4 + 0.25 * k), surf + 40 + b.rng.int(0, Math.max(0, D - 72)), { xa: x0, xb: x0 + W });
@@ -101,7 +101,7 @@ export const gimmickSegments = [
       maybeMonitor(b, b.cx - 96, b.cy, 0.4, 'common', 'fire');
       const x0 = b.cx, y = b.cy, W = b.rng.int(6, Math.round(lerp(10, 15, t))) * S, lavaY = y + 40;
       for (let x = x0; x < x0 + W; x++) b.column(x, y + 72);
-      b.world.addLiquid(x0, x0 + W, lavaY, 'lava');
+      b.world.addLiquid(x0, x0 + W, lavaY, 'lava', y + 80);
       if (t > 0.2) b.spawn('spout', x0 + W / 2, lavaY, { period: Math.round(lerp(150, 100, t)), phase: b.rng.int(0, 60) });
       for (let k = 1; k <= 3; k++) b.ring(x0 + (W * k) / 4, y - 48 - 24 * Math.sin((Math.PI * k) / 4));
       b.gap(W, 0);
@@ -422,8 +422,8 @@ export const gimmickObjects = {
       if (k.state === 'slam' && o.state === 'warn') core.events.push('slam');
       o.state = k.state; o.n = k.t; o.cy = k.cy;
       if (o.cy !== prev || !o.drawn) {
-        w.fillRect(o.x0, Math.round(prev), o.x1, Math.round(prev) + o.h, 0);
-        w.fillRect(o.x0, Math.round(o.cy), o.x1, Math.round(o.cy) + o.h, px(BOTH, MAT.METAL));
+        w.fillRect(o.x0, Math.round(prev), o.x1, Math.round(prev) + o.h, 0, true);
+        w.fillRect(o.x0, Math.round(o.cy), o.x1, Math.round(o.cy) + o.h, px(BOTH, MAT.METAL), true);
         o.drawn = true;
       }
       o.y = o.cy + o.h / 2;

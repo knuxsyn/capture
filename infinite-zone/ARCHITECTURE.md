@@ -55,9 +55,20 @@ flowchart LR
 10. Crumbling bridges have gaps under 40 px, so speed carries you across; a fallen bridge rebuilds on respawn so a checkpoint never faces an empty pit.
 11. A move-using player is part of the eval: both test players glide gaps wider than 70% of their jump range, climb walls taller than 80% of jump height, spindash into cracked rock when slow, and run straight over gaps short enough to cross on speed.
 
+12. Timed hazards publish their own forecast. A crusher exposes `openAt(o, dt, head)`, an exact replay of its cycle; anything else timed exposes `clearFor(o)`. Test players forecast their run past every one ahead at the speed they'd carry, stop short when a window would close on them, and rev a spindash to go when it opens. Once braking can't stop them short, they commit.
+13. Nothing loops forever. A bounce that doesn't hurt (lava while still flashing) hands control back; a monitor never sits under a bumper you'd hit hopping it.
+
 Invariants 1–5 came from failures the expert bot found. 6–8 came from the reaction-time runner. The expert proves a level *can* be cleared; the runner proves it's *fair* to someone holding right. Before the fairness rules, the same runner died 3.2 times per 100 segments (14 in zone 1 across 60 seeds); after, 0.1, all in deliberate late pits.
 
 The loop: **add a production → `npm test` → read the per-segment tables → fix geometry or add an invariant.**
+
+## Set pieces: one primitive each
+
+The S3K set pieces reuse three primitives instead of special cases:
+
+- **Liquids** are spans `{x0, x1, y, kind}` beside the bitmap. Entering water swaps the physics table (half speed, low gravity) and starts the air clock; lava hurts and bounces. A water surface also carries a `SKIM` film in the bitmap that is solid only while the player moves faster than 6.5 px/frame, so running on water is the same floor code as running on grass.
+- **Object-owned solids** (`MAT.METAL`) let monitors and crushers be terrain the sensors already understand. The object rewrites its pixels as it moves; the renderer skips them and lets the object draw itself.
+- **Physics tables per state.** `physicsFor(wet, shoes, super)` composes multipliers onto the cart physics and caches them. Speed shoes underwater and Super underwater fall out without extra code.
 
 ## Biomes
 
@@ -68,6 +79,8 @@ Palettes are built in HSL from the mood: sky hue first, grass hue kept at least 
 ## Shell
 
 Renderer paints each chunk once into a cached canvas: color comes from the zone palette and each pixel's depth below the surface (grass band → dark line → strata). Parallax strips are generated per zone. The camera lives in the core (`camera.js`) so the fairness test sees exactly what the screen shows: S3K-like caps (16 px/frame) plus look-ahead up to 136 px at speed.
+
+Effects (`effects.js`) layer what's cosmetic: water tint and surface, lava glow, the four shields, invincibility stars, Super's tint and sparkles, splashes, skim spray, embers, the drowning countdown. It reads the core and never writes it, so it can use `Math.random`.
 
 Skins (`skin.js`) map player state to S3K's animation set and timing (walk and run frames hold `8 − |gsp|` frames, roll `4 − |gsp|`), rotate in 45° steps like the original's pre-rotated frames, and key out the sheet's background color.
 

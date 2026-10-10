@@ -6,7 +6,7 @@ Zero dependencies. No build step to develop; one script to bundle a single offli
 
 ```bash
 npm run serve   # http://localhost:8080 (ES modules need a server, not file://)
-npm test        # physics invariants, bot traversal, fair-player trap budget, every cart
+npm test        # physics invariants, bot traversal, fair-player trap budget, every cart, set pieces
 npm run build   # dist/index.html: one self-contained file
 ```
 
@@ -15,10 +15,10 @@ npm run build   # dist/index.html: one self-contained file
 | Layer | Files | Role |
 |---|---|---|
 | Core | `src/core/` | Deterministic sim. No DOM. `step(input)` = one 60 Hz frame. |
-| Base cart | `src/content/base.js` | 15 segment productions, 7 object types, a biome generator, 4 hand-made palettes |
+| Base cart | `src/content/base.js` | 15 segment productions, the core object types (rings, springs, monitors, projectiles), a biome generator, 4 hand-made palettes |
 | Players | `src/content/bot.js` | Expert bot (attract mode, traversal) and a reaction-time runner (fairness) |
-| Shell | `src/shell/` | Canvas renderer, sprite skins, input, synth SFX, page loop |
-| Mods | `mods/` | `circuit` (the default campaign), physics (`moon`), content (`skyways`), moveset (`glide`: glide, wall climb, ledge pull-up, belly-slide) |
+| Shell | `src/shell/` | Canvas renderer, effects (liquids, shields, particles), sprite skins, input, synth SFX, page loop |
+| Mods | `mods/` | `circuit` (the default campaign), `gimmicks` (S3K set pieces and badniks the circuit draws on), physics (`moon`), content (`skyways`), moveset (`glide`: glide, wall climb, ledge pull-up, belly-slide) |
 
 ## Writing a cartridge
 
@@ -72,9 +72,22 @@ Three designed zones that loop forever, two acts each, harder every lap. Each on
 | Ember Canyon | red rock at dusk, strata, mesas, hoodoos | climb cliffs taller than any spring (rings run up the face), smash cracked rock by rolling, spindashing or gliding into it |
 | Static Ruins | neon night, bricks, colonnades | climb towers and glide between them, sprint crumbling bridges, jump or roll past flyers |
 
+Each zone also draws on S3K set pieces, rebuilt on the same physics:
+
+| Set piece | From | What the physics does with it |
+|---|---|---|
+| Lagoon | Hydrocity | Over 6.5 px/frame you skim the surface. Slower, you sink: half speed, low gravity, a 30-second air supply with the 5-to-0 countdown, big bubbles from vents refill it. |
+| Lava pit | Lava Reef | Burns you and throws you out; with the fire shield it only throws you. Spouts fire on a beat from tier 0.2. |
+| Vines | Mushroom Hill / Angel Island | A real pendulum. Grab the handle with your speed, pump with left/right, let go on the upswing. |
+| Crushers | Flying Battery | Pistons on a cycle you can read: wait, shake, slam, hold, rise. Stop short and rev a spindash, then go. |
+| Bumpers, balloons | Carnival Night | Fixed-speed reflection; a balloon pop is a fixed kick up and restores your glide. |
+| Badniks | AIZ, MGZ, HCZ, LBZ | Rhinobots spot you and charge, Bloominators lob spike balls, Orbinauts orbit spikes, Spikers can't be stomped, Jawz swim. |
+| Monitors | everywhere | Roll in or land on them: rings, extra life, invincibility, speed shoes, and the four shields. Elemental shields deflect projectiles; lightning pulls rings in; bubble lets you breathe underwater. |
+| Super | S3K | 50 rings, jump, then up + jump. Faster, invulnerable, rings drain one a second. |
+
 Tier rises a third of a step per zone: wider chasms, taller cliffs, faster crumbling, more flyers. Lap 2 changes the time of day, later laps rotate the hue, and from lap 3 some chasms and bridges are true pits. Falls before that land on catch floors; crumbled bridges rebuild when you respawn.
 
-`node test/circuit.mjs`: the expert bot and the reaction-time runner both play the circuit with the full moveset (they glide, climb, smash and spindash), plus an endurance run of three laps on 10 seeds.
+`node test/circuit.mjs`: the expert bot and the reaction-time runner both play the circuit with the full moveset (they glide, climb, smash, spindash, swing, roll into monitors and wait out pistons), plus an endurance run of three laps on 10 seeds.
 
 ## Seeds and biomes
 
@@ -93,13 +106,13 @@ The built-in runner is drawn in code. Any sprite sheet can replace it:
 2. Write an atlas mapping animations to frame numbers: `idle walk run dash roll spindash skid push crouch spring fall hurt die` (see `src/shell/skin.js`; missing ones fall back sensibly).
 3. In the page, **Load sheet** with the image and the atlas. It stays in that browser. For local development, put `sheet.png` and `skin.json` in `skins/local/` (git-ignored) and `npm run serve`.
 
-Third-party art never goes in the repo or the bundle. Known sheet layouts live in `src/shell/presets.js` (matched by image size, coordinates only), so the image alone is enough. The S3K Knuckles sheet from The Spriters Resource (ripped by Triangly & Paraemon, 1131×1862) is mapped: idle, bored, look up, ledge balance, walk, run, roll, spindash, skid, push, crouch, spring, hurt, death, plus glide, glide turn, drop, belly-slide, get up, climb and ledge pull-up. Pair it with the Glide & Climb cartridge.
+Third-party art never goes in the repo or the bundle. Known sheet layouts live in `src/shell/presets.js` (matched by image size, coordinates only), so the image alone is enough. The S3K Knuckles sheet from The Spriters Resource (ripped by Triangly & Paraemon, 1131×1862) is mapped: idle, bored, look up, ledge balance, walk, run, roll, spindash, skid, push, crouch, spring, hurt, death, plus glide, glide turn, drop, belly-slide, get up, climb, ledge pull-up, vine hang and the Super transformation. Pair it with the Glide & Climb cartridge.
 
 `tools/bundle.mjs --skin sheet.png` also writes `dist/personal.html` with the sheet embedded, for your own offline play (never publish or commit it).
 
 ## Controls
 
-Arrows or WASD to run, Z/X/Space to jump, ↓ to roll, ↓ + jump to rev a spindash. ↑ looks up. With Glide & Climb: jump again mid-air to glide, glide into a wall to grab it, ↑/↓ to climb, jump to kick off. P pauses, G shows sensors, layers and segment boundaries, R restarts the seed, M mutes.
+Arrows or WASD to run, Z/X/Space to jump, ↓ to roll, ↓ + jump to rev a spindash. ↑ looks up. With Glide & Climb: jump again mid-air to glide, glide into a wall to grab it, ↑/↓ to climb, jump to kick off. With 50 rings: jump, then ↑ + jump to go Super. P pauses, G shows sensors, layers and segment boundaries, R restarts the seed, M mutes.
 
 ## Not affiliated
 

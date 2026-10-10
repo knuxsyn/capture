@@ -39,8 +39,10 @@ export class World {
     this.skim = false;
   }
 
-  addLiquid(x0, x1, y, kind) {
-    this.liquids.push({ x0, x1, y, kind });
+  // A body of liquid: surface y over [x0, x1), down to `bottom` (for the
+  // renderer; physics only reads the surface).
+  addLiquid(x0, x1, y, kind, bottom = y + 256) {
+    this.liquids.push({ x0, x1, y, kind, bottom });
     this.liquids.sort((a, b) => a.x0 - b.x0);
   }
 
@@ -77,8 +79,9 @@ export class World {
     this.dirty.add(cx * ROWS + cy);
   }
 
-  // Fill one pixel column over [y0, y1).
-  fillCol(x, y0, y1, v) {
+  // Fill one pixel column over [y0, y1). `quiet` skips the redraw flag, for
+  // object-owned solids (METAL) that draw themselves and change every frame.
+  fillCol(x, y0, y1, v, quiet = false) {
     y0 = Math.max(0, Math.floor(y0));
     y1 = Math.min(WORLD.H, Math.floor(y1));
     if (x < 0 || y0 >= y1) return;
@@ -87,12 +90,12 @@ export class World {
       const cy = y >> SHIFT, end = Math.min(y1, (cy + 1) << SHIFT);
       const c = this.chunk(cx, cy, true);
       for (; y < end; y++) c[((y & MASK) << SHIFT) | lx] = v;
-      this.dirty.add(cx * ROWS + cy);
+      if (!quiet) this.dirty.add(cx * ROWS + cy);
     }
   }
 
-  fillRect(x0, y0, x1, y1, v) {
-    for (let x = Math.floor(x0); x < x1; x++) this.fillCol(x, y0, y1, v);
+  fillRect(x0, y0, x1, y1, v, quiet = false) {
+    for (let x = Math.floor(x0); x < x1; x++) this.fillCol(x, y0, y1, v, quiet);
   }
 
   solid(x, y, mask, top) {

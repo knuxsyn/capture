@@ -257,7 +257,7 @@ function collect(o, core) {
 // on it bounces you. Kinds: rings, shield, fire, lightning, bubble,
 // invincible, shoes, life.
 export function placeMonitor(b, x, groundY, kind) {
-  b.world.fillRect(x - 14, groundY - 30, x + 14, groundY, px(BOTH, MAT.METAL));
+  b.world.fillRect(x - 14, groundY - 30, x + 14, groundY, px(BOTH, MAT.METAL), true);
   return b.spawn('monitor', x, groundY - 15, { kind, x0: x - 14, y0: groundY - 30, x1: x + 14, y1: groundY });
 }
 
@@ -299,7 +299,7 @@ export const objects = {
       const ex = p.P.pushR + Math.abs(p.xsp) + 3;
       const down = p.hr + Math.max(0, p.ysp) + 3, up = p.hr + Math.max(0, -p.ysp) + 3;
       if (!strong || p.dead || p.x + ex < o.x0 || p.x - ex > o.x1 || p.y + down < o.y0 || p.y - up > o.y1) return;
-      core.world.fillRect(o.x0, o.y0, o.x1, o.y1, 0);
+      core.world.fillRect(o.x0, o.y0, o.x1, o.y1, 0, true);
       o.alive = false;
       if (released) { p.gsp = p.facing * (p.P.dashBase + Math.floor(o.prev) / 2); p.rolling = true; p.curl(); }
       if (!p.ground && p.ysp > 0 && p.y < o.y0) p.ysp = -Math.max(p.ysp, 3);
